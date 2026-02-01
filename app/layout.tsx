@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import FFmpegPreloader from "@/components/FFmpegPreloader";
 
 export const metadata: Metadata = {
   title: "Giffy - Instant Video to GIF Converter",
@@ -38,6 +39,8 @@ export default function RootLayout({
             </p>
           </footer>
         </div>
+        
+        <FFmpegPreloader />
       </body>
     </html>
   );

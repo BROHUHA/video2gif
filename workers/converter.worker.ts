@@ -3,6 +3,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 let ffmpeg: FFmpeg | null = null;
+let isInitialized = false;
 
 interface ConversionParams {
   videoBlob: Blob;
@@ -10,6 +11,7 @@ interface ConversionParams {
   trimEnd: number;
   width: number;
   fps: number;
+  usePreloaded?: boolean;
 }
 
 interface ProgressMessage {
@@ -30,7 +32,7 @@ interface ErrorMessage {
 type WorkerMessage = ProgressMessage | CompleteMessage | ErrorMessage;
 
 async function initFFmpeg() {
-  if (ffmpeg) return ffmpeg;
+  if (ffmpeg && isInitialized) return ffmpeg;
 
   ffmpeg = new FFmpeg();
 
@@ -52,6 +54,7 @@ async function initFFmpeg() {
     wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
   });
 
+  isInitialized = true;
   return ffmpeg;
 }
 
@@ -133,17 +136,11 @@ self.onmessage = async (e: MessageEvent<ConversionParams>) => {
       type: 'complete',
       gifBlob,
     } as CompleteMessage);
-    
-    // Reset FFmpeg instance for next job
-    ffmpeg = null;
   } catch (error: any) {
     self.postMessage({
       type: 'error',
       error: error.message || 'Conversion failed',
     } as ErrorMessage);
-    
-    // Reset on error
-    ffmpeg = null;
   }
 };
 

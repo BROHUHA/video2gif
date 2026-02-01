@@ -5,8 +5,8 @@ import FileUpload from '@/components/FileUpload';
 import VideoPreview from '@/components/VideoPreview';
 import TrimSlider from '@/components/TrimSlider';
 import ConversionProgress from '@/components/ConversionProgress';
-import LoadingState from '@/components/LoadingState';
 import { getCompressionPreset, getEstimatedFileSize } from '@/lib/compression';
+import { isFFmpegLoaded } from '@/lib/ffmpeg-preload';
 
 const MAX_DURATION_DESKTOP = 60;
 const MAX_DURATION_MOBILE = 30;
@@ -17,7 +17,6 @@ export default function Home() {
   const [trimStart, setTrimStart] = useState<number>(0);
   const [trimEnd, setTrimEnd] = useState<number>(0);
   const [isConverting, setIsConverting] = useState(false);
-  const [isLoadingFFmpeg, setIsLoadingFFmpeg] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   
@@ -43,7 +42,6 @@ export default function Home() {
     if (!selectedFile) return;
 
     setIsConverting(true);
-    setIsLoadingFFmpeg(true);
     setProgress(0);
     setError(null);
 
@@ -80,14 +78,12 @@ export default function Home() {
       const workerTimeout = setTimeout(() => {
         setError('Conversion timed out. Please try a shorter video.');
         setIsConverting(false);
-        setIsLoadingFFmpeg(false);
         workerRef.current?.terminate();
         workerRef.current = null;
       }, 5 * 60 * 1000);
 
       workerRef.current.onmessage = (e) => {
         if (e.data.type === 'progress') {
-          setIsLoadingFFmpeg(false); // FFmpeg loaded, now converting
           setProgress(e.data.progress);
         } else if (e.data.type === 'complete') {
           clearTimeout(workerTimeout);
@@ -104,7 +100,6 @@ export default function Home() {
           URL.revokeObjectURL(url);
 
           setIsConverting(false);
-          setIsLoadingFFmpeg(false);
           setProgress(100);
           
           // Reset after download
@@ -127,7 +122,6 @@ export default function Home() {
         console.error('Worker error:', err);
         setError('Conversion failed. Please try again with a different video.');
         setIsConverting(false);
-        setIsLoadingFFmpeg(false);
         workerRef.current?.terminate();
         workerRef.current = null;
       };
@@ -139,13 +133,13 @@ export default function Home() {
         trimEnd,
         width: preset.maxWidth,
         fps: preset.fps,
+        usePreloaded: isFFmpegLoaded(),
       });
 
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       setIsConverting(false);
-      setIsLoadingFFmpeg(false);
       workerRef.current?.terminate();
       workerRef.current = null;
     }
@@ -158,8 +152,6 @@ export default function Home() {
 
   return (
     <div className="space-y-8">
-      {isLoadingFFmpeg && <LoadingState message="Loading FFmpeg..." />}
-      
       <div className="text-center">
         <h2 className="text-2xl sm:text-3xl font-bold mb-2">
           Convert Video to GIF
@@ -210,7 +202,7 @@ export default function Home() {
 
           <ConversionProgress 
             progress={progress}
-            isConverting={isConverting && !isLoadingFFmpeg}
+            isConverting={isConverting}
             error={error}
           />
           
@@ -226,7 +218,7 @@ export default function Home() {
                 }
               `}
             >
-              {isConverting ? (isLoadingFFmpeg ? 'Loading FFmpeg...' : 'Converting...') : 'Convert to GIF'}
+              {isConverting ? 'Converting...' : 'Convert to GIF'}
             </button>
             
             <button
