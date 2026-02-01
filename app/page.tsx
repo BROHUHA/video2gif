@@ -29,6 +29,7 @@ export default function Home() {
     setSelectedFile(file);
     setTrimStart(0);
     setError(null);
+    setProgress(0);
   };
 
   const handleDurationLoad = (loadedDuration: number) => {

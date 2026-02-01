@@ -55,46 +55,72 @@ async function initFFmpeg() {
   return ffmpeg;
 }
 
+async function cleanupFFmpeg() {
+  if (!ffmpeg) return;
+
+  try {
+    // List all files in virtual FS
+    const files = await ffmpeg.listDir('/');
+    
+    // Delete all files except . and ..
+    for (const file of files) {
+      if (file.name !== '.' && file.name !== '..') {
+        try {
+          await ffmpeg.deleteFile(file.name);
+        } catch (e) {
+          console.warn('Failed to delete file:', file.name);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Cleanup error:', e);
+  }
+}
+
 async function convertToGif(params: ConversionParams): Promise<Blob> {
   const ffmpegInstance = await initFFmpeg();
   
   const { videoBlob, trimStart, trimEnd, width, fps } = params;
   const duration = trimEnd - trimStart;
 
-  // Write input video to FFmpeg virtual FS
-  await ffmpegInstance.writeFile('input.mp4', await fetchFile(videoBlob));
+  try {
+    // Write input video to FFmpeg virtual FS
+    await ffmpegInstance.writeFile('input.mp4', await fetchFile(videoBlob));
 
-  // Two-pass GIF generation for better quality
-  // Pass 1: Generate palette
-  await ffmpegInstance.exec([
-    '-ss', trimStart.toString(),
-    '-t', duration.toString(),
-    '-i', 'input.mp4',
-    '-vf', `fps=${fps},scale=${width}:-1:flags=lanczos,palettegen`,
-    '-y',
-    'palette.png',
-  ]);
+    // Two-pass GIF generation for better quality
+    // Pass 1: Generate palette
+    await ffmpegInstance.exec([
+      '-ss', trimStart.toString(),
+      '-t', duration.toString(),
+      '-i', 'input.mp4',
+      '-vf', `fps=${fps},scale=${width}:-1:flags=lanczos,palettegen`,
+      '-y',
+      'palette.png',
+    ]);
 
-  // Pass 2: Use palette to generate GIF
-  await ffmpegInstance.exec([
-    '-ss', trimStart.toString(),
-    '-t', duration.toString(),
-    '-i', 'input.mp4',
-    '-i', 'palette.png',
-    '-filter_complex', `fps=${fps},scale=${width}:-1:flags=lanczos[x];[x][1:v]paletteuse`,
-    '-y',
-    'output.gif',
-  ]);
+    // Pass 2: Use palette to generate GIF
+    await ffmpegInstance.exec([
+      '-ss', trimStart.toString(),
+      '-t', duration.toString(),
+      '-i', 'input.mp4',
+      '-i', 'palette.png',
+      '-filter_complex', `fps=${fps},scale=${width}:-1:flags=lanczos[x];[x][1:v]paletteuse`,
+      '-y',
+      'output.gif',
+    ]);
 
-  // Read output GIF
-  const data = await ffmpegInstance.readFile('output.gif');
-  
-  // Clean up virtual FS
-  await ffmpegInstance.deleteFile('input.mp4');
-  await ffmpegInstance.deleteFile('palette.png');
-  await ffmpegInstance.deleteFile('output.gif');
+    // Read output GIF
+    const data = await ffmpegInstance.readFile('output.gif');
+    
+    // Clean up virtual FS immediately
+    await cleanupFFmpeg();
 
-  return new Blob([data], { type: 'image/gif' });
+    return new Blob([data], { type: 'image/gif' });
+  } catch (error) {
+    // Ensure cleanup even on error
+    await cleanupFFmpeg();
+    throw error;
+  }
 }
 
 self.onmessage = async (e: MessageEvent<ConversionParams>) => {
@@ -105,10 +131,17 @@ self.onmessage = async (e: MessageEvent<ConversionParams>) => {
       type: 'complete',
       gifBlob,
     } as CompleteMessage);
+    
+    // Reset FFmpeg instance for next job
+    ffmpeg = null;
   } catch (error: any) {
     self.postMessage({
       type: 'error',
       error: error.message || 'Conversion failed',
     } as ErrorMessage);
+    
+    // Reset on error
+    ffmpeg = null;
   }
 };
+
