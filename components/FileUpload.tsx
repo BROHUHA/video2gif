@@ -89,6 +89,8 @@ export default function FileUpload({ onFileSelect }: FileUploadProps) {
           accept="video/mp4,video/quicktime,video/webm"
           onChange={handleFileInput}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          aria-label="Upload video file"
+          tabIndex={0}
         />
         
         <div className="pointer-events-none space-y-4">

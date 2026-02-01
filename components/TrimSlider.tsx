@@ -30,12 +30,13 @@ export default function TrimSlider({
     <div className="space-y-6">
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <label className="text-sm font-medium">Trim Start</label>
-          <span className="text-sm text-[var(--muted)]">
+          <label htmlFor="trim-start" className="text-sm font-medium">Trim Start</label>
+          <span className="text-sm text-[var(--muted)]" aria-live="polite">
             {formatTime(trimStart)}
           </span>
         </div>
         <input
+          id="trim-start"
           type="range"
           min={0}
           max={duration}
@@ -47,18 +48,20 @@ export default function TrimSlider({
               onTrimStartChange(value);
             }
           }}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+          aria-label="Trim start time"
         />
       </div>
 
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <label className="text-sm font-medium">Trim End</label>
-          <span className="text-sm text-[var(--muted)]">
+          <label htmlFor="trim-end" className="text-sm font-medium">Trim End</label>
+          <span className="text-sm text-[var(--muted)]" aria-live="polite">
             {formatTime(trimEnd)}
           </span>
         </div>
         <input
+          id="trim-end"
           type="range"
           min={0}
           max={duration}
@@ -70,7 +73,8 @@ export default function TrimSlider({
               onTrimEndChange(value);
             }
           }}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+          aria-label="Trim end time"
         />
       </div>
 

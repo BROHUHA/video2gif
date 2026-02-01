@@ -70,6 +70,7 @@ export default function VideoPreview({
           controls
           loop
           className="w-full max-h-[500px] object-contain"
+          aria-label="Video preview"
         />
       </div>
 
