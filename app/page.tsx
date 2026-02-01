@@ -2,12 +2,22 @@
 
 import { useState } from 'react';
 import FileUpload from '@/components/FileUpload';
+import VideoPreview from '@/components/VideoPreview';
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [duration, setDuration] = useState<number>(0);
+  const [trimStart, setTrimStart] = useState<number>(0);
+  const [trimEnd, setTrimEnd] = useState<number>(0);
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
+    setTrimStart(0);
+  };
+
+  const handleDurationLoad = (loadedDuration: number) => {
+    setDuration(loadedDuration);
+    setTrimEnd(loadedDuration);
   };
 
   return (
@@ -22,14 +32,26 @@ export default function Home() {
         </p>
       </div>
 
-      <FileUpload onFileSelect={handleFileSelect} />
-
-      {selectedFile && (
-        <div className="p-4 bg-green-50 dark:bg-green-950 border border-[var(--success)] rounded-lg">
-          <p className="text-sm text-[var(--success)] font-medium">
-            ✓ {selectedFile.name} ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
-          </p>
-        </div>
+      {!selectedFile ? (
+        <FileUpload onFileSelect={handleFileSelect} />
+      ) : (
+        <>
+          <VideoPreview 
+            file={selectedFile} 
+            onDurationLoad={handleDurationLoad}
+            trimStart={trimStart}
+            trimEnd={trimEnd}
+          />
+          
+          <div className="flex gap-4">
+            <button
+              onClick={() => setSelectedFile(null)}
+              className="px-4 py-2 text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              Choose Different File
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
