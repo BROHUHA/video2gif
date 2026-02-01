@@ -4,6 +4,7 @@ import { useState } from 'react';
 import FileUpload from '@/components/FileUpload';
 import VideoPreview from '@/components/VideoPreview';
 import TrimSlider from '@/components/TrimSlider';
+import { getCompressionPreset, getEstimatedFileSize } from '@/lib/compression';
 
 const MAX_DURATION_DESKTOP = 60;
 const MAX_DURATION_MOBILE = 30;
@@ -27,6 +28,10 @@ export default function Home() {
     setDuration(loadedDuration);
     setTrimEnd(Math.min(loadedDuration, maxDuration));
   };
+
+  const clipDuration = trimEnd - trimStart;
+  const preset = getCompressionPreset(clipDuration);
+  const estimatedSize = getEstimatedFileSize(clipDuration);
 
   return (
     <div className="space-y-8">
@@ -59,6 +64,24 @@ export default function Home() {
             onTrimEndChange={setTrimEnd}
             maxDuration={maxDuration}
           />
+
+          <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+            <h3 className="text-sm font-semibold mb-2">Compression Settings (Auto)</h3>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-[var(--muted)]">Max Width</p>
+                <p className="font-mono font-bold">{preset.maxWidth}px</p>
+              </div>
+              <div>
+                <p className="text-[var(--muted)]">Frame Rate</p>
+                <p className="font-mono font-bold">{preset.fps} fps</p>
+              </div>
+              <div>
+                <p className="text-[var(--muted)]">Est. Size</p>
+                <p className="font-mono font-bold">{estimatedSize}</p>
+              </div>
+            </div>
+          </div>
           
           <div className="flex gap-4">
             <button
