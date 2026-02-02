@@ -4,10 +4,10 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { isFFmpegLoaded, preloadFFmpeg } from '@/lib/ffmpeg-preload';
 import { getCompressionPreset } from '@/lib/compression';
 
-type EditorState = 'loading' | 'empty' | 'editing' | 'converting' | 'complete';
+type AppState = 'loading' | 'empty' | 'editing' | 'converting' | 'complete';
 
-export default function VideoEditorPage() {
-  const [state, setState] = useState<EditorState>(isFFmpegLoaded() ? 'empty' : 'loading');
+export default function MobileEditorPage() {
+  const [state, setState] = useState<AppState>(isFFmpegLoaded() ? 'empty' : 'loading');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string>('');
   const [duration, setDuration] = useState<number>(0);
@@ -19,10 +19,12 @@ export default function VideoEditorPage() {
   const [gifUrl, setGifUrl] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
+  const [thumbnails, setThumbnails] = useState<string[]>([]);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const maxDuration = 60;
 
@@ -41,6 +43,38 @@ export default function VideoEditorPage() {
     }
   }, []);
 
+  // Generate thumbnails
+  const generateThumbnails = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = 56;
+    canvas.height = 56;
+
+    const thumbs: string[] = [];
+    const count = Math.min(10, Math.floor(duration));
+    
+    for (let i = 0; i < count; i++) {
+      const time = (duration / count) * i;
+      video.currentTime = time;
+      
+      await new Promise<void>((resolve) => {
+        video.onseeked = () => {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          thumbs.push(canvas.toDataURL('image/jpeg', 0.7));
+          resolve();
+        };
+      });
+    }
+    
+    setThumbnails(thumbs);
+    video.currentTime = trimStart;
+  }, [duration, trimStart]);
+
   // Handle file selection
   const handleFileSelect = useCallback((file: File) => {
     if (file.size > 100 * 1024 * 1024) {
@@ -54,6 +88,7 @@ export default function VideoEditorPage() {
     setState('editing');
     setTrimStart(0);
     setCurrentTime(0);
+    setThumbnails([]);
   }, []);
 
   // Handle file input
@@ -70,20 +105,27 @@ export default function VideoEditorPage() {
       const dur = videoRef.current.duration;
       setDuration(dur);
       setTrimEnd(Math.min(dur, maxDuration));
+      generateThumbnails();
     }
   };
 
   // Video time update
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+      const time = videoRef.current.currentTime;
+      setCurrentTime(time);
+      
+      // Loop within trim range
+      if (time >= trimEnd) {
+        videoRef.current.currentTime = trimStart;
+      }
     }
   };
 
   // Seek to time
   const seekTo = (time: number) => {
     if (videoRef.current) {
-      videoRef.current.currentTime = time;
+      videoRef.current.currentTime = Math.max(trimStart, Math.min(time, trimEnd));
       setCurrentTime(time);
     }
   };
@@ -160,50 +202,43 @@ export default function VideoEditorPage() {
 
   // New project
   const handleNewProject = () => {
-    if (confirm('Start new project? Current work will be lost.')) {
-      setSelectedFile(null);
-      setVideoUrl('');
-      setGifBlob(null);
-      setGifUrl('');
-      setState('empty');
-      setProgress(0);
-      setTrimStart(0);
-      setTrimEnd(0);
-    }
+    setSelectedFile(null);
+    setVideoUrl('');
+    setGifBlob(null);
+    setGifUrl('');
+    setState('empty');
+    setProgress(0);
+    setTrimStart(0);
+    setTrimEnd(0);
+    setThumbnails([]);
   };
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    const ms = Math.floor((seconds % 1) * 100);
-    return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const clipDuration = trimEnd - trimStart;
   const canConvert = clipDuration > 0 && clipDuration <= maxDuration;
+  const clipProgress = duration > 0 ? ((currentTime - trimStart) / clipDuration) * 100 : 0;
 
   // Loading screen
   if (state === 'loading') {
     return (
-      <div className="h-screen w-screen flex items-center justify-center" style={{background: 'var(--bg-dark)'}}>
-        <div className="text-center space-y-6 max-w-md px-6">
-          <div className="text-6xl">🎬</div>
-          <h1 className="text-3xl font-semibold">Giffy</h1>
+      <div className="h-screen w-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #667eea 0%, #a855f7 100%)'}}>
+        <div className="text-center space-y-6 max-w-md px-6 animate-fade-in">
+          <div className="text-8xl animate-pulse">🎬</div>
+          <h1 className="text-4xl font-bold text-white">Giffy</h1>
           <div className="space-y-3">
-            <p className="text-base" style={{color: 'var(--text-secondary)'}}>
-              Initializing editor...
-            </p>
-            <div className="w-full h-2 rounded-full overflow-hidden" style={{background: 'var(--bg-panel)'}}>
+            <div className="w-64 h-2 rounded-full overflow-hidden glass">
               <div 
-                className="h-full transition-all duration-300"
-                style={{
-                  width: `${loadProgress}%`,
-                  background: 'var(--accent-primary)'
-                }}
+                className="h-full bg-white transition-all duration-300"
+                style={{width: `${loadProgress}%`}}
               />
             </div>
-            <p className="text-sm" style={{color: 'var(--text-secondary)'}}>
-              {loadProgress}%
+            <p className="text-sm text-white opacity-80">
+              Loading {loadProgress}%
             </p>
           </div>
         </div>
@@ -211,19 +246,22 @@ export default function VideoEditorPage() {
     );
   }
 
-  return (
-    <div className="h-screen w-screen flex flex-col" style={{background: 'var(--bg-dark)'}}>
-      {/* Top Toolbar */}
-      <div className="h-14 flex items-center justify-between px-4 border-b select-none" style={{background: 'var(--bg-panel)', borderColor: 'var(--border-color)'}}>
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-semibold">Giffy</h1>
-          <div className="h-6 w-px" style={{background: 'var(--border-color)'}} />
+  // Empty state
+  if (state === 'empty') {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center p-6" style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)'}}>
+        <div className="text-center space-y-8 max-w-md animate-fade-in">
+          <div className="text-9xl">📹</div>
+          <h1 className="text-5xl font-bold text-white">Giffy</h1>
+          <p className="text-xl text-white opacity-90">
+            Turn videos into amazing GIFs
+          </p>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="btn-secondary text-sm"
-            disabled={state === 'converting'}
+            className="fab"
+            style={{width: '64px', height: '64px', fontSize: '32px'}}
           >
-            📁 Import Video
+            +
           </button>
           <input
             ref={fileInputRef}
@@ -232,265 +270,227 @@ export default function VideoEditorPage() {
             onChange={handleFileInput}
             className="hidden"
           />
-          {selectedFile && (
-            <button onClick={handleNewProject} className="btn-icon" title="New Project">
-              <span className="text-lg">🗑️</span>
-            </button>
-          )}
         </div>
-        <div className="flex items-center gap-2">
-          {state === 'editing' && (
-            <button 
-              onClick={handleConvert}
-              disabled={!canConvert}
-              className="btn-success"
-            >
-              ⚡ Export GIF
-            </button>
-          )}
-          {state === 'complete' && (
-            <button onClick={handleDownload} className="btn-success">
-              ⬇ Download GIF
-            </button>
-          )}
-        </div>
+      </div>
+    );
+  }
+
+  // Main editor
+  return (
+    <div className="h-screen w-screen flex flex-col" style={{background: 'var(--bg-main)'}}>
+      <canvas ref={canvasRef} className="hidden" />
+      
+      {/* Video (hidden for thumbnail generation) */}
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        onLoadedMetadata={handleLoadedMetadata}
+        onTimeUpdate={handleTimeUpdate}
+        className="hidden"
+      />
+
+      {/* Top Bar */}
+      <div className="h-16 flex items-center justify-between px-4 select-none" style={{background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)'}}>
+        <button onClick={handleNewProject} className="icon-btn" style={{background: 'transparent', color: 'var(--text-primary)'}}>
+          <span className="text-2xl">✕</span>
+        </button>
+        <h1 className="text-lg font-semibold">{state === 'complete' ? 'Complete' : 'Edit'}</h1>
+        <button
+          onClick={state === 'complete' ? handleDownload : handleConvert}
+          disabled={state === 'editing' && !canConvert}
+          className="icon-btn"
+          style={{
+            background: state === 'complete' ? 'var(--accent-teal)' : canConvert ? 'var(--accent-purple)' : '#ccc',
+            color: 'white'
+          }}
+        >
+          <span className="text-xl">{state === 'complete' ? '⬇' : '✓'}</span>
+        </button>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar */}
-        <div className="w-64 border-r flex flex-col" style={{background: 'var(--bg-panel)', borderColor: 'var(--border-color)'}}>
-          <div className="p-4 border-b" style={{borderColor: 'var(--border-color)'}}>
-            <h2 className="text-sm font-semibold uppercase" style={{color: 'var(--text-secondary)'}}>
-              Project
-            </h2>
-          </div>
-          <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-            {selectedFile && (
-              <div className="space-y-2">
-                <p className="text-xs uppercase font-semibold" style={{color: 'var(--text-secondary)'}}>
-                  Source File
-                </p>
-                <div className="p-3 rounded-lg" style={{background: 'var(--bg-panel-light)'}}>
-                  <p className="text-sm truncate">{selectedFile.name}</p>
-                  <p className="text-xs mt-1" style={{color: 'var(--text-secondary)'}}>
-                    {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-                  </p>
+      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+        <div className="w-full max-w-md">
+          <div className="video-card animate-slide-up">
+            {/* Preview */}
+            <div className="relative" style={{aspectRatio: '9/16', background: '#000'}}>
+              {state === 'editing' && videoUrl && (
+                <video
+                  src={videoUrl}
+                  className="w-full h-full object-contain"
+                  onClick={togglePlayPause}
+                />
+              )}
+              
+              {state === 'converting' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center glass-dark">
+                  <div className="text-6xl mb-4 animate-pulse">⚡</div>
+                  <p className="text-xl font-semibold text-white mb-2">Converting...</p>
+                  <p className="text-3xl font-bold text-white">{progress}%</p>
                 </div>
-              </div>
-            )}
+              )}
+
+              {state === 'complete' && gifUrl && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img 
+                  src={gifUrl} 
+                  alt="Generated GIF" 
+                  className="w-full h-full object-contain"
+                />
+              )}
+
+              {/* Floating controls (editing only) */}
+              {state === 'editing' && (
+                <>
+                  <div className="absolute top-4 right-4">
+                    <button className="fab" style={{width: '40px', height: '40px'}}>
+                      <span className="text-lg">⚙️</span>
+                    </button>
+                  </div>
+                  
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                    <button onClick={togglePlayPause} className="fab" style={{width: '64px', height: '64px'}}>
+                      <span className="text-3xl">{isPlaying ? '⏸' : '▶'}</span>
+                    </button>
+                  </div>
+
+                  <div className="absolute bottom-4 right-4">
+                    <button className="fab" style={{width: '40px', height: '40px'}}>
+                      <span className="text-lg">⛶</span>
+                    </button>
+                  </div>
+
+                  {/* Time display */}
+                  <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 glass px-4 py-2 rounded-full">
+                    <p className="text-sm text-white font-mono">
+                      {formatTime(currentTime)} / {formatTime(duration)}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Timeline Section */}
             {state === 'editing' && (
-              <div className="space-y-2">
-                <p className="text-xs uppercase font-semibold" style={{color: 'var(--text-secondary)'}}>
-                  Clip Info
-                </p>
-                <div className="p-3 rounded-lg space-y-2" style={{background: 'var(--bg-panel-light)'}}>
-                  <div className="flex justify-between text-sm">
-                    <span style={{color: 'var(--text-secondary)'}}>Duration:</span>
-                    <span>{formatTime(clipDuration)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span style={{color: 'var(--text-secondary)'}}>Start:</span>
-                    <span>{formatTime(trimStart)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span style={{color: 'var(--text-secondary)'}}>End:</span>
-                    <span>{formatTime(trimEnd)}</span>
-                  </div>
+              <div className="p-4 space-y-4" style={{background: 'var(--bg-dark)'}}>
+                {/* Timeline markers */}
+                <div className="flex justify-between text-xs" style={{color: 'var(--text-on-dark)'}}>
+                  <span>0s</span>
+                  <span>{Math.floor(duration / 2)}s</span>
+                  <span>{Math.floor(duration)}s</span>
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Center Canvas */}
-        <div className="flex-1 flex flex-col">
-          {/* Canvas Area */}
-          <div className="flex-1 flex items-center justify-center p-8" style={{background: 'var(--bg-dark)'}}>
-            {state === 'empty' && (
-              <div className="text-center space-y-6 max-w-md">
-                <div className="text-8xl">🎬</div>
-                <h2 className="text-2xl font-semibold">Import a Video</h2>
-                <p className="text-base" style={{color: 'var(--text-secondary)'}}>
-                  Drop a video file or click "Import Video" to get started
-                </p>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="btn-primary"
-                >
-                  Choose File
-                </button>
-              </div>
-            )}
-
-            {(state === 'editing' || state === 'converting') && videoUrl && (
-              <div className="w-full max-w-4xl">
-                <div className="rounded-lg overflow-hidden" style={{background: '#000'}}>
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onTimeUpdate={handleTimeUpdate}
-                    className="w-full"
-                  />
-                </div>
-                {state === 'converting' && (
-                  <div className="mt-6 space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span>Converting...</span>
-                      <span>{progress}%</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full overflow-hidden" style={{background: 'var(--bg-panel)'}}>
-                      <div 
-                        className="h-full transition-all"
-                        style={{
-                          width: `${progress}%`,
-                          background: 'var(--accent-success)'
-                        }}
-                      />
-                    </div>
+                {/* Thumbnails */}
+                {thumbnails.length > 0 && (
+                  <div className="timeline-thumbnails">
+                    {thumbnails.map((thumb, i) => (
+                      <div
+                        key={i}
+                        className="timeline-thumb"
+                        onClick={() => seekTo((duration / thumbnails.length) * i)}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={thumb} alt={`Frame ${i}`} />
+                      </div>
+                    ))}
                   </div>
                 )}
+
+                {/* Trim controls */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-white opacity-60">START</span>
+                    <input
+                      type="range"
+                      className="custom-range flex-1"
+                      min={0}
+                      max={duration}
+                      step={0.1}
+                      value={trimStart}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (val < trimEnd) {
+                          setTrimStart(val);
+                          seekTo(val);
+                        }
+                      }}
+                    />
+                    <span className="text-xs text-white font-mono">{formatTime(trimStart)}</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-white opacity-60">END</span>
+                    <input
+                      type="range"
+                      className="custom-range flex-1"
+                      min={0}
+                      max={duration}
+                      step={0.1}
+                      value={trimEnd}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (val > trimStart) setTrimEnd(val);
+                      }}
+                    />
+                    <span className="text-xs text-white font-mono">{formatTime(trimEnd)}</span>
+                  </div>
+                </div>
+
+                {/* Clip info */}
+                <div className="glass-dark px-4 py-3 rounded-xl">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm" style={{color: 'var(--text-on-dark)'}}>Clip Duration</span>
+                    <span className={`text-lg font-semibold ${canConvert ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatTime(clipDuration)}
+                    </span>
+                  </div>
+                  {!canConvert && (
+                    <p className="text-xs text-red-400 mt-2">
+                      ⚠️ Max {maxDuration}s allowed
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
-            {state === 'complete' && gifUrl && (
-              <div className="w-full max-w-4xl text-center space-y-6">
-                <h2 className="text-2xl font-semibold">✨ Export Complete!</h2>
-                <div className="rounded-lg overflow-hidden inline-block" style={{background: '#000'}}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={gifUrl} alt="Generated GIF" className="max-w-full" />
-                </div>
-                {gifBlob && (
-                  <p className="text-sm" style={{color: 'var(--text-secondary)'}}>
+            {/* Complete state footer */}
+            {state === 'complete' && gifBlob && (
+              <div className="p-4" style={{background: 'var(--bg-dark)'}}>
+                <div className="glass-dark px-4 py-3 rounded-xl text-center">
+                  <p className="text-sm text-white opacity-80">File Size</p>
+                  <p className="text-2xl font-bold text-white mt-1">
                     {(gifBlob.size / (1024 * 1024)).toFixed(2)} MB
                   </p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Timeline */}
-          {state === 'editing' && (
-            <div className="h-48 border-t" style={{background: 'var(--bg-panel)', borderColor: 'var(--border-color)'}}>
-              <div className="h-12 border-b flex items-center px-4 gap-4" style={{borderColor: 'var(--border-color)'}}>
-                <button onClick={togglePlayPause} className="btn-icon">
-                  <span className="text-xl">{isPlaying ? '⏸️' : '▶️'}</span>
-                </button>
-                <button onClick={() => seekTo(trimStart)} className="btn-icon" title="Go to start">
-                  <span className="text-sm">⏮️</span>
-                </button>
-                <span className="text-sm font-mono select-none">{formatTime(currentTime)}</span>
-                <div className="h-6 w-px" style={{background: 'var(--border-color)'}} />
-                <span className="text-xs" style={{color: 'var(--text-secondary)'}}>
-                  Duration: {formatTime(duration)}
-                </span>
-              </div>
-              
-              <div className="p-4 space-y-4">
-                <div>
-                  <div className="flex justify-between text-xs mb-2" style={{color: 'var(--text-secondary)'}}>
-                    <span>PLAYHEAD</span>
-                    <span>{formatTime(currentTime)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={duration}
-                    step={0.01}
-                    value={currentTime}
-                    onChange={(e) => seekTo(parseFloat(e.target.value))}
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs mb-2" style={{color: 'var(--text-secondary)'}}>
-                    <span>TRIM START</span>
-                    <span>{formatTime(trimStart)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={duration}
-                    step={0.01}
-                    value={trimStart}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (val < trimEnd) setTrimStart(val);
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs mb-2" style={{color: 'var(--text-secondary)'}}>
-                    <span>TRIM END</span>
-                    <span>{formatTime(trimEnd)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={duration}
-                    step={0.01}
-                    value={trimEnd}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (val > trimStart) setTrimEnd(val);
-                    }}
-                  />
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Sidebar */}
-        <div className="w-72 border-l flex flex-col" style={{background: 'var(--bg-panel)', borderColor: 'var(--border-color)'}}>
-          <div className="p-4 border-b" style={{borderColor: 'var(--border-color)'}}>
-            <h2 className="text-sm font-semibold uppercase" style={{color: 'var(--text-secondary)'}}>
-              Export Settings
-            </h2>
-          </div>
-          <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-            {state === 'editing' && (
-              <>
-                <div className="space-y-2">
-                  <p className="text-xs uppercase font-semibold" style={{color: 'var(--text-secondary)'}}>
-                    Output
-                  </p>
-                  <div className="p-3 rounded-lg" style={{background: 'var(--bg-panel-light)'}}>
-                    <p className="text-sm">Animated GIF</p>
-                    <p className="text-xs mt-1" style={{color: 'var(--text-secondary)'}}>
-                      Optimized for web
-                    </p>
-                  </div>
-                </div>
-
-                {clipDuration > maxDuration && (
-                  <div className="p-3 rounded-lg" style={{background: '#7f1d1d', border: '1px solid #991b1b'}}>
-                    <p className="text-sm font-semibold" style={{color: '#fca5a5'}}>
-                      ⚠️ Clip too long
-                    </p>
-                    <p className="text-xs mt-1" style={{color: '#fecaca'}}>
-                      Maximum {maxDuration}s allowed. Adjust trim points.
-                    </p>
-                  </div>
-                )}
-
-                {canConvert && (
-                  <div className="p-3 rounded-lg" style={{background: '#064e3b', border: '1px solid #059669'}}>
-                    <p className="text-sm font-semibold" style={{color: '#6ee7b7'}}>
-                      ✓ Ready to export
-                    </p>
-                    <p className="text-xs mt-1" style={{color: '#a7f3d0'}}>
-                      {formatTime(clipDuration)} clip
-                    </p>
-                  </div>
-                )}
-              </>
             )}
           </div>
         </div>
       </div>
+
+      {/* Bottom Toolbar */}
+      {state === 'editing' && (
+        <div className="toolbar h-20 flex items-center justify-around px-4">
+          <button className="icon-btn">
+            <span className="text-2xl">✂️</span>
+          </button>
+          <button className="icon-btn">
+            <span className="text-2xl">🎨</span>
+          </button>
+          <button className="icon-btn">
+            <span className="text-2xl">🔊</span>
+          </button>
+          <button className="icon-btn">
+            <span className="text-2xl">⚡</span>
+          </button>
+          <button className="icon-btn">
+            <span className="text-2xl">📋</span>
+          </button>
+          <button className="icon-btn" onClick={handleNewProject}>
+            <span className="text-2xl">🗑️</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
