@@ -21,10 +21,7 @@ export default function TrimScreen({ file, onConfirm, onBack, maxDuration }: Tri
   useEffect(() => {
     const url = URL.createObjectURL(file);
     setVideoUrl(url);
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
+    return () => URL.revokeObjectURL(url);
   }, [file]);
 
   const handleLoadedMetadata = () => {
@@ -62,31 +59,36 @@ export default function TrimScreen({ file, onConfirm, onBack, maxDuration }: Tri
   };
 
   const handleBack = () => {
-    if (confirm('Go back? Your trim settings will be lost.')) {
+    if (confirm('Go back? Your clip will be lost!')) {
       onBack();
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-4 sm:p-6">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6" style={{background: 'linear-gradient(135deg, #fef9e7 0%, #fef3c7 100%)'}}>
       <div className="w-full max-w-3xl space-y-6">
         {/* Header */}
-        <div className="text-center">
-          <div className="inline-block bg-lime-500 px-4 py-2 border-4 border-black neo-shadow-sm">
-            <h1 className="text-3xl sm:text-4xl font-black uppercase">
-              CHOOSE CLIP
-            </h1>
+        <div className="text-center space-y-3 rotate-chaos-1">
+          <div className="relative inline-block">
+            <div className="bg-gradient-to-r from-cyan-400 to-purple-400 px-6 py-3 border-5 border-black neo-shadow-chaos">
+              <h1 className="text-4xl sm:text-5xl font-black uppercase">
+                Pick your Clip! ✂️
+              </h1>
+            </div>
+            <div className="absolute -top-3 -right-3 bg-yellow-400 border-3 border-black px-2 py-1 rotate-12 text-xs font-black sticker">
+              STEP 2
+            </div>
           </div>
-          <p className="text-sm text-gray-600 mt-2 font-semibold">
-            Select which part of your video to convert
+          <p className="text-base font-bold text-gray-700">
+            Choose which part to turn into a GIF
           </p>
         </div>
 
-        {/* Video Preview */}
-        <div className="bg-black border-4 border-black neo-shadow-lg overflow-hidden">
+        {/* Video */}
+        <div className="bg-black border-5 border-black neo-shadow-double overflow-hidden rotate-chaos-2">
           {isLoading && (
             <div className="aspect-video flex items-center justify-center bg-gray-900">
-              <div className="text-white text-4xl animate-spin">⏳</div>
+              <div className="text-white text-5xl sticker">⏳</div>
             </div>
           )}
           
@@ -98,53 +100,47 @@ export default function TrimScreen({ file, onConfirm, onBack, maxDuration }: Tri
             controls
             loop
             className="w-full"
-            aria-label="Video preview"
           />
         </div>
 
-        {/* Visual Timeline */}
+        {/* Timeline */}
         {!isLoading && (
-          <div className="relative w-full h-12 bg-gray-200 border-4 border-black">
-            {/* Selected region */}
+          <div className="relative w-full h-16 bg-white border-4 border-black neo-shadow-triple rotate-chaos-3">
             <div 
-              className="absolute h-full bg-lime-500 opacity-50 transition-all"
+              className="absolute h-full transition-all"
               style={{
                 left: `${(trimStart / duration) * 100}%`,
-                width: `${((trimEnd - trimStart) / duration) * 100}%`
+                width: `${((trimEnd - trimStart) / duration) * 100}%`,
+                background: 'repeating-linear-gradient(45deg, #84cc16, #84cc16 10px, #fbbf24 10px, #fbbf24 20px)'
               }}
             />
-            {/* Start marker */}
             <div 
-              className="absolute top-0 bottom-0 w-1 bg-black"
+              className="absolute top-0 bottom-0 w-1 bg-black z-10"
               style={{ left: `${(trimStart / duration) * 100}%` }}
             />
-            {/* End marker */}
             <div 
-              className="absolute top-0 bottom-0 w-1 bg-black"
+              className="absolute top-0 bottom-0 w-1 bg-black z-10"
               style={{ left: `${(trimEnd / duration) * 100}%` }}
             />
-            {/* Current time indicator */}
             <div 
-              className="absolute top-0 bottom-0 w-0.5 bg-red-600 z-10"
+              className="absolute top-0 bottom-0 w-1 bg-red-600 z-20 pulse-glow"
               style={{ left: `${(currentTime / duration) * 100}%` }}
             />
           </div>
         )}
 
-        {/* Trim Controls */}
-        <div className="space-y-5 bg-white border-4 border-black p-4 sm:p-6 neo-shadow">
-          {/* Start */}
-          <div className="space-y-2">
+        {/* Controls */}
+        <div className="space-y-5 bg-white border-5 border-black p-4 sm:p-6 neo-shadow-pink rotate-chaos-1">
+          <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <label htmlFor="trim-start" className="text-base sm:text-lg font-bold">
+              <label className="text-lg sm:text-xl font-black uppercase bg-lime-300 border-2 border-black px-3 py-1">
                 START
               </label>
-              <span className="text-lg sm:text-xl font-mono font-black bg-lime-500 px-3 py-1 border-2 border-black">
+              <span className="text-xl sm:text-2xl font-black bg-yellow-300 px-4 py-2 border-3 border-black font-mono">
                 {formatTime(trimStart)}
               </span>
             </div>
             <input
-              id="trim-start"
               type="range"
               min={0}
               max={duration}
@@ -152,26 +148,21 @@ export default function TrimScreen({ file, onConfirm, onBack, maxDuration }: Tri
               value={trimStart}
               onChange={(e) => {
                 const value = parseFloat(e.target.value);
-                if (value < trimEnd) {
-                  setTrimStart(value);
-                }
+                if (value < trimEnd) setTrimStart(value);
               }}
-              aria-label={`Start time: ${formatTime(trimStart)}`}
             />
           </div>
 
-          {/* End */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <label htmlFor="trim-end" className="text-base sm:text-lg font-bold">
+              <label className="text-lg sm:text-xl font-black uppercase bg-cyan-300 border-2 border-black px-3 py-1">
                 END
               </label>
-              <span className="text-lg sm:text-xl font-mono font-black bg-lime-500 px-3 py-1 border-2 border-black">
+              <span className="text-xl sm:text-2xl font-black bg-pink-300 px-4 py-2 border-3 border-black font-mono">
                 {formatTime(trimEnd)}
               </span>
             </div>
             <input
-              id="trim-end"
               type="range"
               min={0}
               max={duration}
@@ -179,33 +170,29 @@ export default function TrimScreen({ file, onConfirm, onBack, maxDuration }: Tri
               value={trimEnd}
               onChange={(e) => {
                 const value = parseFloat(e.target.value);
-                if (value > trimStart) {
-                  setTrimEnd(value);
-                }
+                if (value > trimStart) setTrimEnd(value);
               }}
-              aria-label={`End time: ${formatTime(trimEnd)}`}
             />
           </div>
 
-          {/* Duration Info */}
-          <div className={`text-center p-4 border-4 ${exceedsLimit ? 'border-red-600 bg-red-50' : 'border-black bg-lime-50'}`}>
-            <p className="text-xs sm:text-sm font-bold text-gray-700 uppercase">Clip Duration</p>
-            <p className="text-3xl sm:text-4xl font-black font-mono mt-1">
+          <div className={`text-center p-5 border-5 ${exceedsLimit ? 'border-red-600 bg-red-100 wiggle' : 'border-black bg-gradient-to-r from-lime-100 to-yellow-100'}`}>
+            <p className="text-sm font-black uppercase text-gray-700">Clip Length</p>
+            <p className="text-4xl sm:text-5xl font-black font-mono mt-1">
               {formatTime(clipDuration)}
             </p>
             {exceedsLimit && (
-              <p className="text-base sm:text-lg font-black text-red-600 mt-2 uppercase">
-                ⚠️ Max {maxDuration}s allowed
+              <p className="text-lg font-black text-red-600 mt-2 uppercase sticker">
+                ⚠️ Too long! Max {maxDuration}s
               </p>
             )}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <button
             onClick={handleBack}
-            className="flex-1 bg-white text-black font-black px-6 py-4 border-4 border-black neo-shadow hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all text-lg sm:text-xl uppercase"
+            className="flex-1 bg-white text-black font-black px-6 py-5 border-5 border-black neo-shadow-double hover:translate-x-2 hover:translate-y-2 hover:shadow-none transition-all text-xl uppercase btn-press rotate-chaos-2"
           >
             ← BACK
           </button>
@@ -214,14 +201,14 @@ export default function TrimScreen({ file, onConfirm, onBack, maxDuration }: Tri
             onClick={() => onConfirm(trimStart, trimEnd)}
             disabled={exceedsLimit}
             className={`
-              flex-1 font-black px-6 py-4 border-4 border-black neo-shadow transition-all text-lg sm:text-xl uppercase
+              flex-1 font-black px-6 py-5 border-5 border-black transition-all text-xl uppercase btn-press rotate-chaos-1
               ${exceedsLimit 
                 ? 'bg-gray-400 cursor-not-allowed opacity-60' 
-                : 'bg-lime-500 hover:translate-x-1 hover:translate-y-1 hover:shadow-none'
+                : 'bg-gradient-to-r from-lime-400 to-yellow-400 neo-shadow-chaos hover:translate-x-2 hover:translate-y-2 hover:shadow-none'
               }
             `}
           >
-            {exceedsLimit ? '⚠️ TOO LONG' : 'CONVERT →'}
+            {exceedsLimit ? '❌ TOO LONG' : 'CONVERT! →'}
           </button>
         </div>
       </div>

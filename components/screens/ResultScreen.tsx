@@ -16,10 +16,7 @@ export default function ResultScreen({ gifBlob, onNewUpload }: ResultScreenProps
   useEffect(() => {
     const url = URL.createObjectURL(gifBlob);
     setGifUrl(url);
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
+    return () => URL.revokeObjectURL(url);
   }, [gifBlob]);
 
   const handleDownload = () => {
@@ -32,7 +29,6 @@ export default function ResultScreen({ gifBlob, onNewUpload }: ResultScreenProps
     a.click();
     document.body.removeChild(a);
 
-    // Show feedback
     setTimeout(() => {
       setDownloading(false);
       setShowDownloadHint(true);
@@ -54,7 +50,6 @@ export default function ResultScreen({ gifBlob, onNewUpload }: ResultScreenProps
           await copyToClipboard();
         }
       } catch (err) {
-        // User cancelled or error occurred
         if ((err as Error).name !== 'AbortError') {
           await copyToClipboard();
         }
@@ -71,8 +66,7 @@ export default function ResultScreen({ gifBlob, onNewUpload }: ResultScreenProps
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Clipboard failed:', err);
-      alert('Could not copy GIF. Please use the download button instead.');
+      alert('Could not copy! Use download instead.');
     }
   };
 
@@ -81,84 +75,91 @@ export default function ResultScreen({ gifBlob, onNewUpload }: ResultScreenProps
   const displaySize = gifBlob.size > 1024 * 1024 ? `${fileSizeMB} MB` : `${fileSizeKB} KB`;
 
   const handleNewUpload = () => {
-    if (confirm('Create a new GIF? Current one will be cleared.')) {
+    if (confirm('Start over? Current GIF will be lost!')) {
       onNewUpload();
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-4 sm:p-6">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6" style={{background: 'linear-gradient(135deg, #fef9e7 0%, #fef3c7 100%)'}}>
       <div className="w-full max-w-2xl space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-block bg-lime-500 px-4 py-2 border-4 border-black neo-shadow-sm">
-            <h1 className="text-3xl sm:text-4xl font-black uppercase">
-              ✨ SUCCESS!
-            </h1>
+        <div className="text-center space-y-4 rotate-chaos-1">
+          <div className="relative inline-block">
+            <div className="bg-gradient-to-r from-lime-400 via-yellow-400 to-pink-400 px-6 py-4 border-6 border-black neo-shadow-chaos">
+              <h1 className="text-4xl sm:text-5xl font-black uppercase tracking-tight flex items-center justify-center gap-3">
+                <span className="sticker text-5xl">🎉</span>
+                SUCCESS!
+                <span className="sticker text-5xl">✨</span>
+              </h1>
+            </div>
+            <div className="absolute -bottom-3 -right-3 bg-cyan-400 border-3 border-black px-3 py-1 rotate-12 text-xs font-black sticker">
+              YOUR GIF!
+            </div>
           </div>
-          <p className="text-base sm:text-lg font-bold text-gray-700">
-            Your GIF is ready
+          <p className="text-xl font-black text-gray-800">
+            Ready to download!
           </p>
         </div>
 
         {/* GIF Preview */}
-        <div className="bg-black border-4 border-black neo-shadow-lg overflow-hidden">
+        <div className="relative bg-black border-6 border-black neo-shadow-double overflow-hidden rotate-chaos-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img 
             src={gifUrl} 
-            alt="Your converted GIF" 
+            alt="Your GIF" 
             className="w-full"
           />
-        </div>
-
-        {/* File Info */}
-        <div className="text-center p-3 sm:p-4 bg-lime-50 border-4 border-black neo-shadow">
-          <p className="text-xs sm:text-sm font-bold text-gray-700 uppercase">File Size</p>
-          <p className="text-2xl sm:text-3xl font-black font-mono mt-1">
-            {displaySize}
-          </p>
+          <div className="absolute top-4 right-4 bg-yellow-400 border-3 border-black px-3 py-2 rotate-6 sticker">
+            <p className="text-sm font-black">{displaySize}</p>
+          </div>
         </div>
 
         {/* Download hint */}
         {showDownloadHint && (
-          <div className="p-3 bg-lime-500 border-4 border-black neo-shadow text-center animate-pulse">
-            <p className="text-sm font-black">
-              ✓ Saved to your Downloads folder
+          <div className="p-4 bg-lime-400 border-5 border-black neo-shadow-triple text-center rotate-chaos-1 wiggle">
+            <p className="text-lg font-black flex items-center justify-center gap-2">
+              <span className="text-2xl">✓</span>
+              Saved to Downloads!
             </p>
           </div>
         )}
 
-        {/* Primary Action */}
+        {/* Primary Download */}
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="w-full bg-lime-500 text-black font-black px-6 py-5 border-4 border-black neo-shadow hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all text-xl sm:text-2xl uppercase disabled:opacity-60"
+          className="w-full bg-gradient-to-r from-lime-400 to-yellow-400 text-black font-black px-8 py-6 border-6 border-black neo-shadow-chaos hover:translate-x-3 hover:translate-y-3 hover:shadow-none transition-all text-2xl sm:text-3xl uppercase disabled:opacity-60 btn-press rotate-chaos-3"
         >
           {downloading ? '⬇ DOWNLOADING...' : '⬇ DOWNLOAD GIF'}
         </button>
 
         {/* Secondary Actions */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <button
             onClick={handleShare}
-            className="bg-white text-black font-black px-4 py-3 border-4 border-black neo-shadow hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all text-base sm:text-lg uppercase"
+            className="bg-pink-300 text-black font-black px-5 py-4 border-4 border-black neo-shadow-pink hover:translate-x-2 hover:translate-y-2 hover:shadow-none transition-all text-lg sm:text-xl uppercase btn-press rotate-chaos-1"
           >
             {copied ? '✓ COPIED' : '📋 COPY'}
           </button>
           
           <button
             onClick={handleNewUpload}
-            className="bg-white text-black font-black px-4 py-3 border-4 border-black neo-shadow hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all text-base sm:text-lg uppercase"
+            className="bg-cyan-300 text-black font-black px-5 py-4 border-4 border-black neo-shadow-triple hover:translate-x-2 hover:translate-y-2 hover:shadow-none transition-all text-lg sm:text-xl uppercase btn-press rotate-chaos-2"
           >
             + NEW
           </button>
         </div>
 
         {/* Footer */}
-        <div className="text-center pt-2">
-          <p className="text-xs sm:text-sm font-semibold text-gray-600">
-            Made with Giffy • 100% Private • No Uploads
-          </p>
+        <div className="text-center rotate-chaos-1">
+          <div className="inline-block bg-purple-200 border-3 border-black px-6 py-3 neo-shadow-double">
+            <p className="text-sm font-black flex items-center gap-2 justify-center">
+              <span>Made with</span>
+              <span className="sticker inline-block text-xl">❤️</span>
+              <span>by Giffy</span>
+            </p>
+          </div>
         </div>
       </div>
     </div>
