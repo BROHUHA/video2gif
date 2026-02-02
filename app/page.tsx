@@ -4,13 +4,13 @@ import { useState, useRef, useEffect } from 'react';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
-type EditorState = 'loading' | 'empty' | 'editing' | 'processing' | 'complete';
+type AppState = 'loading' | 'empty' | 'editing' | 'processing' | 'complete';
+type DownloadState = 'idle' | 'preparing' | 'downloading' | 'complete';
 
 export default function VideoEditor() {
   // State
-  const [state, setState] = useState<EditorState>('loading');
+  const [state, setState] = useState<AppState>('loading');
   const [loadProgress, setLoadProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('Initializing...');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string>('');
   const [duration, setDuration] = useState<number>(0);
@@ -19,11 +19,10 @@ export default function VideoEditor() {
   const [trimEnd, setTrimEnd] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [processingMessage, setProcessingMessage] = useState('');
+  const [processingStage, setProcessingStage] = useState<string>('');
   const [gifBlob, setGifBlob] = useState<Blob | null>(null);
   const [gifUrl, setGifUrl] = useState<string>('');
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadState, setDownloadState] = useState<'idle' | 'preparing' | 'downloading' | 'complete'>('idle');
+  const [downloadState, setDownloadState] = useState<DownloadState>('idle');
 
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -37,33 +36,18 @@ export default function VideoEditor() {
 
   const loadFFmpeg = async () => {
     try {
-      setLoadingMessage('Loading video processor...');
-      setLoadProgress(10);
-
       const ffmpeg = new FFmpeg();
       ffmpegRef.current = ffmpeg;
-
-      ffmpeg.on('log', ({ message }) => {
-        console.log(message);
-      });
 
       ffmpeg.on('progress', ({ progress: prog }) => {
         const percent = Math.round(prog * 100);
         setProgress(percent);
         
-        if (percent < 30) {
-          setProcessingMessage('Preparing video...');
-        } else if (percent < 60) {
-          setProcessingMessage('Converting frames...');
-        } else if (percent < 90) {
-          setProcessingMessage('Optimizing GIF...');
-        } else {
-          setProcessingMessage('Almost done...');
-        }
+        if (percent < 30) setProcessingStage('Analyzing video');
+        else if (percent < 60) setProcessingStage('Converting frames');
+        else if (percent < 90) setProcessingStage('Optimizing output');
+        else setProcessingStage('Finalizing');
       });
-
-      setLoadingMessage('Downloading core files...');
-      setLoadProgress(30);
 
       const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
       
@@ -72,26 +56,22 @@ export default function VideoEditor() {
         wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
       });
 
-      setLoadingMessage('Ready!');
       setLoadProgress(100);
-      setTimeout(() => setState('empty'), 500);
+      setTimeout(() => setState('empty'), 300);
     } catch (error) {
-      console.error('FFmpeg load error:', error);
-      setLoadingMessage('Failed to load. Please refresh.');
-      alert('Failed to load video processor. Please refresh.');
+      console.error('Failed to load video processor:', error);
+      alert('Failed to initialize. Please refresh the page.');
     }
   };
 
-  // File selection
   const handleFileSelect = (file: File) => {
     if (!file) return;
     
     if (file.size > 100 * 1024 * 1024) {
-      alert('File too large! Max 100 MB');
+      alert('File size must be under 100 MB');
       return;
     }
 
-    setLoadingMessage('Loading video...');
     const url = URL.createObjectURL(file);
     setVideoFile(file);
     setVideoUrl(url);
@@ -100,24 +80,20 @@ export default function VideoEditor() {
     setCurrentTime(0);
   };
 
-  // Video loaded
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       const dur = videoRef.current.duration;
       setDuration(dur);
       setTrimEnd(Math.min(dur, 60));
-      setLoadingMessage('Video loaded successfully!');
     }
   };
 
-  // Time update
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
     }
   };
 
-  // Play/pause
   const togglePlayPause = () => {
     if (!videoRef.current) return;
     
@@ -130,7 +106,6 @@ export default function VideoEditor() {
     }
   };
 
-  // Seek
   const seekTo = (time: number) => {
     if (videoRef.current) {
       videoRef.current.currentTime = time;
@@ -138,25 +113,18 @@ export default function VideoEditor() {
     }
   };
 
-  // Convert to GIF
   const handleConvert = async () => {
     if (!videoFile || !ffmpegRef.current) return;
 
     setState('processing');
     setProgress(0);
-    setProcessingMessage('Starting conversion...');
+    setProcessingStage('Starting conversion');
 
     try {
       const ffmpeg = ffmpegRef.current;
       
-      setProcessingMessage('Reading video file...');
-      
-      // Write input file
       await ffmpeg.writeFile('input.mp4', await fetchFile(videoFile));
 
-      setProcessingMessage('Processing video...');
-
-      // Convert
       const clipDuration = trimEnd - trimStart;
       const fps = clipDuration <= 5 ? 20 : clipDuration <= 15 ? 15 : 12;
       const width = 480;
@@ -170,65 +138,48 @@ export default function VideoEditor() {
         'output.gif'
       ]);
 
-      setProcessingMessage('Finalizing GIF...');
-
-      // Read output
       const data = await ffmpeg.readFile('output.gif') as Uint8Array;
       const blob = new Blob([new Uint8Array(data)], { type: 'image/gif' });
       const url = URL.createObjectURL(blob);
       
       setGifBlob(blob);
       setGifUrl(url);
-      setProcessingMessage('Complete!');
       setState('complete');
 
-      // Cleanup
       await ffmpeg.deleteFile('input.mp4');
       await ffmpeg.deleteFile('output.gif');
     } catch (error) {
-      console.error('Conversion error:', error);
-      alert('Conversion failed!');
-      setProcessingMessage('Conversion failed');
+      console.error('Conversion failed:', error);
+      alert('Conversion failed. Please try again.');
       setState('editing');
     }
   };
 
-  // Download
   const handleDownload = () => {
     if (!gifUrl) return;
     
     setDownloadState('preparing');
-    setIsDownloading(true);
-    setProcessingMessage('Preparing download...');
     
-    // Simulate download preparation
     setTimeout(() => {
       setDownloadState('downloading');
-      setProcessingMessage('Downloading GIF...');
       
       const a = document.createElement('a');
       a.href = gifUrl;
       a.download = `giffy-${Date.now()}.gif`;
       a.click();
       
-      // Simulate download completion
       setTimeout(() => {
         setDownloadState('complete');
-        setProcessingMessage('✓ Downloaded successfully!');
         
-        // Reset after showing success
         setTimeout(() => {
-          setIsDownloading(false);
           setDownloadState('idle');
-          setProcessingMessage('');
         }, 3000);
-      }, 800);
+      }, 600);
     }, 400);
   };
 
-  // New project
   const handleNew = () => {
-    if (confirm('Start new? Current work will be lost.')) {
+    if (confirm('Start a new project? Current work will be lost.')) {
       setVideoFile(null);
       setVideoUrl('');
       setGifBlob(null);
@@ -238,13 +189,10 @@ export default function VideoEditor() {
       setTrimEnd(0);
       setCurrentTime(0);
       setProgress(0);
-      setProcessingMessage('');
       setDownloadState('idle');
-      setIsDownloading(false);
     }
   };
 
-  // Format time
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -254,68 +202,71 @@ export default function VideoEditor() {
   const clipDuration = trimEnd - trimStart;
   const canExport = clipDuration > 0 && clipDuration <= 60;
 
-  // Get status message
-  const getStatusMessage = () => {
-    if (state === 'editing') {
-      if (!canExport) return '⚠️ Clip duration must be 60s or less';
-      return '✓ Ready to export';
-    }
-    return '';
-  };
-
-  // Loading screen
+  // Loading Screen
   if (state === 'loading') {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-brutalism-accent">
-        <div className="text-center space-y-6 panel-brutal p-8 max-w-md mx-4">
-          <div className="text-6xl">🎬</div>
-          <h1 className="text-3xl font-bold uppercase">Giffy</h1>
-          
-          {/* Progress bar */}
-          <div className="w-full">
-            <div className="w-full h-4 bg-white border-2 border-black">
-              <div 
-                className="h-full bg-brutalism-dark transition-all duration-300"
-                style={{ width: `${loadProgress}%` }}
-              />
-            </div>
-            <p className="font-bold mt-3">{loadProgress}%</p>
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #FAFAF9 0%, #F5F5F4 100%)' }}>
+        <div className="card card-elevated p-8 max-w-md w-full text-center space-y-6">
+          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#D97757] to-[#E9A87E] rounded-2xl flex items-center justify-center">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
           </div>
           
-          {/* Status message */}
-          <div className="panel-brutal p-3 bg-white">
-            <p className="text-sm font-bold">{loadingMessage}</p>
+          <div>
+            <h1 className="text-2xl font-semibold mb-2">Giffy</h1>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Initializing video processor
+            </p>
           </div>
+          
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${loadProgress}%` }}></div>
+          </div>
+          
+          <p className="text-sm font-medium">{loadProgress}%</p>
         </div>
       </div>
     );
   }
 
-  // Empty state
+  // Empty State
   if (state === 'empty') {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-brutalism-bg">
-        <div className="text-center space-y-8 p-8 max-w-md mx-4">
-          <div className="panel-brutal p-12">
-            <div className="text-8xl mb-6">📹</div>
-            <h1 className="text-4xl font-black uppercase mb-4">Giffy</h1>
-            <p className="text-lg mb-8">Professional Video to GIF Editor</p>
-            
-            {/* Instructions */}
-            <div className="panel-brutal p-4 mb-6 text-left text-sm space-y-2">
-              <p className="font-bold">How to use:</p>
-              <p>1. Import your video file</p>
-              <p>2. Trim to desired length (max 60s)</p>
-              <p>3. Export as optimized GIF</p>
-            </div>
-            
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="btn-brutal-primary text-lg px-8 py-4"
-            >
-              Import Video
-            </button>
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #FAFAF9 0%, #F5F5F4 100%)' }}>
+        <div className="card card-elevated p-8 sm:p-12 max-w-2xl w-full text-center space-y-8">
+          <div className="w-20 h-20 mx-auto bg-gradient-to-br from-[#D97757] to-[#E9A87E] rounded-2xl flex items-center justify-center">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
           </div>
+          
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-semibold mb-3">Giffy</h1>
+            <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+              Convert videos to optimized GIFs
+            </p>
+          </div>
+          
+          <div className="card p-6 text-left space-y-3">
+            <h3 className="font-medium mb-3">How it works</h3>
+            <div className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <p>1. Import a video file (up to 100 MB)</p>
+              <p>2. Trim to your desired length (max 60 seconds)</p>
+              <p>3. Export as an optimized GIF</p>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="btn-primary text-base px-6 py-3"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Import Video
+          </button>
+          
           <input
             ref={fileInputRef}
             type="file"
@@ -328,138 +279,71 @@ export default function VideoEditor() {
     );
   }
 
-  // Main editor
+  // Main Editor or Processing/Complete
   return (
-    <div className="h-screen w-screen flex flex-col bg-brutalism-bg overflow-hidden safe-area">
-      {/* Top Toolbar */}
-      <div className="h-14 border-b-2 border-black bg-brutalism-panel flex items-center justify-between px-2 sm:px-4 flex-shrink-0 no-select">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <h1 className="text-lg sm:text-xl font-black uppercase">Giffy</h1>
-          <button onClick={handleNew} className="btn-brutal text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2">
-            New
-          </button>
-        </div>
-        
-        {/* Status indicator - hidden on mobile */}
-        <div className="hidden md:flex flex-1 justify-center px-4">
-          {(state === 'editing' || state === 'processing') && (
-            <div className="panel-brutal px-4 py-2 text-sm font-bold max-w-md">
-              {state === 'editing' && getStatusMessage()}
-              {state === 'processing' && (
-                <span className="text-brutalism-accent">{processingMessage}</span>
-              )}
+    <div className="min-h-screen flex flex-col safe-area" style={{ background: 'var(--background)' }}>
+      {/* Header */}
+      <header className="border-b" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#D97757] to-[#E9A87E] rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <span className="font-semibold text-lg">Giffy</span>
             </div>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-2 sm:gap-3">
-          {state === 'editing' && (
-            <button
-              onClick={handleConvert}
-              disabled={!canExport}
-              className={`${canExport ? 'btn-brutal-success' : 'btn-brutal opacity-50 cursor-not-allowed'} text-xs sm:text-sm px-3 py-1 sm:px-4 sm:py-2`}
-              title={!canExport ? 'Adjust trim to 60s or less' : 'Export to GIF'}
-            >
-              <span className="hidden sm:inline">Export GIF</span>
-              <span className="sm:hidden">Export</span>
-            </button>
-          )}
-          {state === 'complete' && (
-            <>
+            
+            {state === 'editing' && (
+              <button onClick={handleNew} className="btn-secondary hidden sm:inline-flex">
+                New Project
+              </button>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {state === 'editing' && (
+              <button
+                onClick={handleConvert}
+                disabled={!canExport}
+                className={canExport ? 'btn-success' : 'btn-secondary opacity-50 cursor-not-allowed'}
+              >
+                Export GIF
+              </button>
+            )}
+            
+            {state === 'complete' && (
               <button 
                 onClick={handleDownload} 
-                className={`btn-brutal-primary text-xs sm:text-sm px-3 py-1 sm:px-4 sm:py-2 ${downloadState === 'downloading' ? 'download-indicator' : ''}`}
-                disabled={isDownloading}
+                className="btn-primary"
+                disabled={downloadState !== 'idle'}
               >
                 {downloadState === 'idle' && 'Download'}
-                {downloadState === 'preparing' && '⏳ Preparing...'}
-                {downloadState === 'downloading' && '⬇️ Downloading...'}
-                {downloadState === 'complete' && '✓ Downloaded!'}
+                {downloadState === 'preparing' && 'Preparing...'}
+                {downloadState === 'downloading' && 'Downloading...'}
+                {downloadState === 'complete' && (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Downloaded
+                  </>
+                )}
               </button>
-              {downloadState !== 'idle' && (
-                <div className="hidden sm:block panel-brutal px-3 py-1 text-xs font-bold">
-                  {downloadState === 'preparing' && '📦 Getting ready...'}
-                  {downloadState === 'downloading' && '💾 Saving file...'}
-                  {downloadState === 'complete' && '✨ Complete!'}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - hidden on mobile/tablet */}
-        <div className="hidden lg:block w-64 border-r-2 border-black bg-brutalism-panel flex-shrink-0 overflow-y-auto">
-          <div className="p-4 space-y-4">
-            <div>
-              <h2 className="text-sm font-black uppercase mb-2">Project</h2>
-              {videoFile && (
-                <div className="panel-brutal p-3 text-sm space-y-2">
-                  <div>
-                    <p className="text-xs opacity-60">FILE</p>
-                    <p className="font-bold truncate">{videoFile.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs opacity-60">SIZE</p>
-                    <p className="font-mono">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {state === 'editing' && (
-              <div>
-                <h2 className="text-sm font-black uppercase mb-2">Clip Info</h2>
-                <div className="panel-brutal p-3 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="opacity-60">Duration:</span>
-                    <span className="font-bold">{formatTime(clipDuration)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="opacity-60">Start:</span>
-                    <span className="font-mono">{formatTime(trimStart)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="opacity-60">End:</span>
-                    <span className="font-mono">{formatTime(trimEnd)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="opacity-60">Status:</span>
-                    <span className={`font-bold ${canExport ? 'text-green-600' : 'text-red-600'}`}>
-                      {canExport ? 'Ready' : 'Too long'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {state === 'processing' && (
-              <div>
-                <h2 className="text-sm font-black uppercase mb-2">Processing</h2>
-                <div className="panel-brutal p-3 space-y-2 text-sm">
-                  <div>
-                    <p className="text-xs opacity-60">PROGRESS</p>
-                    <p className="font-bold text-lg">{progress}%</p>
-                  </div>
-                  <div>
-                    <p className="text-xs opacity-60">STATUS</p>
-                    <p className="font-bold">{processingMessage}</p>
-                  </div>
-                </div>
-              </div>
             )}
           </div>
         </div>
+      </header>
 
-        {/* Center Preview */}
-        <div className="flex-1 flex flex-col">
-          {/* Preview Area */}
-          <div className="flex-1 flex items-center justify-center p-2 sm:p-4 md:p-8 bg-brutalism-hover">
-            {state === 'editing' && videoUrl && (
-              <div className="w-full max-w-3xl space-y-2 sm:space-y-4">
-                <div className="video-preview-brutal">
+      {/* Main Content */}
+      <main className="flex-1 overflow-hidden">
+        {state === 'editing' && videoUrl && (
+          <div className="h-full flex flex-col">
+            {/* Video Preview Area */}
+            <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+              <div className="w-full max-w-4xl space-y-4">
+                <div className="video-container">
                   <video
                     ref={videoRef}
                     src={videoUrl}
@@ -471,170 +355,64 @@ export default function VideoEditor() {
                   />
                 </div>
                 
-                {/* Playback controls */}
-                <div className="flex justify-center gap-2 sm:gap-3">
-                  <button 
-                    onClick={togglePlayPause} 
-                    className="icon-btn-brutal text-lg sm:text-xl"
-                    title={isPlaying ? 'Pause' : 'Play'}
-                  >
-                    {isPlaying ? '⏸' : '▶'}
+                {/* Controls */}
+                <div className="flex items-center justify-center gap-2">
+                  <button onClick={() => seekTo(trimStart)} className="btn-icon">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+                    </svg>
                   </button>
-                  <button 
-                    onClick={() => seekTo(trimStart)} 
-                    className="icon-btn-brutal text-lg sm:text-xl"
-                    title="Jump to trim start"
-                  >
-                    ⏮
+                  
+                  <button onClick={togglePlayPause} className="btn-icon">
+                    {isPlaying ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
                   </button>
-                  <button 
-                    onClick={() => seekTo(trimEnd)} 
-                    className="icon-btn-brutal text-lg sm:text-xl"
-                    title="Jump to trim end"
-                  >
-                    ⏭
+                  
+                  <button onClick={() => seekTo(trimEnd)} className="btn-icon">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
+                    </svg>
                   </button>
                 </div>
                 
-                {/* Mobile status message */}
-                <div className="md:hidden panel-brutal p-3 text-center">
-                  <p className={`text-xs sm:text-sm font-bold ${canExport ? 'text-green-600' : 'text-red-600'}`}>
-                    {getStatusMessage()}
-                  </p>
-                </div>
-                
-                {/* Current action hint - hidden on small mobile */}
-                <div className="hidden sm:block panel-brutal p-3 text-center">
-                  <p className="text-xs sm:text-sm font-bold">
-                    Adjust the trim sliders below to select your clip
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {state === 'processing' && (
-              <div className="panel-brutal p-6 sm:p-12 text-center max-w-md mx-4">
-                <div className="text-4xl sm:text-6xl mb-4 sm:mb-6 spin-brutal inline-block">⚡</div>
-                <h2 className="text-xl sm:text-2xl font-black uppercase mb-3 sm:mb-4">Processing</h2>
-                
-                {/* Progress bar */}
-                <div className="w-full h-4 sm:h-6 bg-white border-2 border-black mb-3 sm:mb-4">
-                  <div 
-                    className="h-full bg-brutalism-success transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                
-                <p className="font-bold text-xl sm:text-2xl mb-3 sm:mb-4">{progress}%</p>
-                
-                {/* Status message */}
-                <div className="panel-brutal p-2 sm:p-3 bg-white">
-                  <p className="text-xs sm:text-sm font-bold">{processingMessage}</p>
-                </div>
-                
-                <p className="text-xs mt-3 sm:mt-4 opacity-60">
-                  This may take a few moments
-                </p>
-              </div>
-            )}
-
-            {state === 'complete' && gifUrl && (
-              <div className="panel-brutal p-4 sm:p-8 max-w-2xl mx-4 w-full">
-                <h2 className="text-xl sm:text-2xl font-black uppercase mb-4 sm:mb-6 text-center" style={{ color: 'var(--claude-dark)' }}>
-                  ✓ Complete!
-                </h2>
-                
-                <img src={gifUrl} alt="Generated GIF" className="border-2 sm:border-4 border-black mb-4 sm:mb-6 w-full" style={{ borderColor: 'var(--claude-brown)' }} />
-                
-                <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6">
-                  {gifBlob && (
-                    <>
-                      <div className="panel-brutal p-2 sm:p-3 text-center">
-                        <p className="text-xs opacity-60">FILE SIZE</p>
-                        <p className="font-bold text-sm sm:text-lg" style={{ color: 'var(--claude-dark)' }}>
-                          {(gifBlob.size / (1024 * 1024)).toFixed(2)} MB
-                        </p>
-                      </div>
-                      <div className="panel-brutal p-2 sm:p-3 text-center">
-                        <p className="text-xs opacity-60">DURATION</p>
-                        <p className="font-bold text-sm sm:text-lg" style={{ color: 'var(--claude-dark)' }}>
-                          {formatTime(clipDuration)}
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                {/* Download state indicator */}
-                {downloadState !== 'idle' && (
-                  <div className={`panel-brutal p-3 sm:p-4 mb-4 sm:mb-6 text-center ${downloadState === 'complete' ? 'bg-green-50' : ''}`}>
-                    <div className="flex items-center justify-center gap-2">
-                      {downloadState === 'preparing' && (
-                        <>
-                          <span className="text-2xl">📦</span>
-                          <div>
-                            <p className="font-bold text-sm sm:text-base" style={{ color: 'var(--claude-orange)' }}>
-                              Preparing Download
-                            </p>
-                            <p className="text-xs opacity-60">Getting your GIF ready...</p>
-                          </div>
-                        </>
-                      )}
-                      {downloadState === 'downloading' && (
-                        <>
-                          <span className="text-2xl download-pulse">⬇️</span>
-                          <div>
-                            <p className="font-bold text-sm sm:text-base" style={{ color: 'var(--claude-orange)' }}>
-                              Downloading...
-                            </p>
-                            <p className="text-xs opacity-60">Saving to your device</p>
-                          </div>
-                        </>
-                      )}
-                      {downloadState === 'complete' && (
-                        <>
-                          <span className="text-2xl">✨</span>
-                          <div>
-                            <p className="font-bold text-sm sm:text-base" style={{ color: 'var(--claude-success)' }}>
-                              Downloaded Successfully!
-                            </p>
-                            <p className="text-xs opacity-60">Check your downloads folder</p>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                {/* Status */}
+                {!canExport && (
+                  <div className="status-badge error mx-auto">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Clip must be 60 seconds or less
                   </div>
                 )}
-                
-                {downloadState === 'idle' && (
-                  <p className="text-center text-xs sm:text-sm opacity-60">
-                    Click "Download" button above to save your GIF
-                  </p>
-                )}
               </div>
-            )}
-          </div>
-
-          {/* Timeline */}
-          {state === 'editing' && (
-            <div className="h-auto border-t-2 border-black bg-brutalism-panel flex-shrink-0">
-              <div className="p-2 sm:p-4 space-y-3 sm:space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase">Timeline</span>
-                  <span className="font-mono text-xs sm:text-sm font-bold">
+            </div>
+            
+            {/* Timeline */}
+            <div className="border-t p-4 sm:p-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+              <div className="max-w-4xl mx-auto space-y-6">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">Timeline</span>
+                  <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>
                     {formatTime(currentTime)} / {formatTime(duration)}
                   </span>
                 </div>
-
+                
                 {/* Playhead */}
                 <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs font-bold">PLAYHEAD</label>
-                    <span className="hidden sm:inline text-xs opacity-60">Scrub through video</span>
-                  </div>
+                  <label className="text-xs font-medium mb-2 block" style={{ color: 'var(--text-secondary)' }}>
+                    PLAYHEAD
+                  </label>
                   <input
                     type="range"
-                    className="range-brutal"
+                    className="range-slider"
                     min={0}
                     max={duration}
                     step={0.01}
@@ -642,16 +420,18 @@ export default function VideoEditor() {
                     onChange={(e) => seekTo(parseFloat(e.target.value))}
                   />
                 </div>
-
+                
                 {/* Trim Start */}
                 <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs font-bold">TRIM START</label>
-                    <span className="text-xs font-mono font-bold">{formatTime(trimStart)}</span>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      TRIM START
+                    </label>
+                    <span className="text-xs font-mono">{formatTime(trimStart)}</span>
                   </div>
                   <input
                     type="range"
-                    className="range-brutal"
+                    className="range-slider"
                     min={0}
                     max={duration}
                     step={0.1}
@@ -662,16 +442,18 @@ export default function VideoEditor() {
                     }}
                   />
                 </div>
-
+                
                 {/* Trim End */}
                 <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs font-bold">TRIM END</label>
-                    <span className="text-xs font-mono font-bold">{formatTime(trimEnd)}</span>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      TRIM END
+                    </label>
+                    <span className="text-xs font-mono">{formatTime(trimEnd)}</span>
                   </div>
                   <input
                     type="range"
-                    className="range-brutal"
+                    className="range-slider"
                     min={0}
                     max={duration}
                     step={0.1}
@@ -683,78 +465,108 @@ export default function VideoEditor() {
                   />
                 </div>
                 
-                {/* Mobile clip info */}
-                <div className="lg:hidden panel-brutal p-2 text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="opacity-60">Clip:</span>
-                    <span className="font-bold">{formatTime(clipDuration)}</span>
-                  </div>
+                {/* Info */}
+                <div className="flex items-center justify-between text-sm pt-2">
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    Clip duration: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{formatTime(clipDuration)}</span>
+                  </span>
                   {videoFile && (
-                    <div className="flex justify-between">
-                      <span className="opacity-60">File:</span>
-                      <span className="font-bold truncate max-w-[60%]">{videoFile.name}</span>
-                    </div>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
+                    </span>
                   )}
                 </div>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Right Sidebar - hidden on mobile/tablet */}
-        <div className="hidden lg:block w-64 border-l-2 border-black bg-brutalism-panel flex-shrink-0 overflow-y-auto">
-          <div className="p-4 space-y-4">
-            <div>
-              <h2 className="text-sm font-black uppercase mb-2">Export</h2>
-              {state === 'editing' && (
-                <div className="panel-brutal p-3 space-y-3 text-sm">
-                  <div>
-                    <p className="text-xs opacity-60">FORMAT</p>
-                    <p className="font-bold">Animated GIF</p>
-                  </div>
-                  <div>
-                    <p className="text-xs opacity-60">QUALITY</p>
-                    <p className="font-bold">Optimized</p>
-                  </div>
-                  <div>
-                    <p className="text-xs opacity-60">CLIP LENGTH</p>
-                    <p className="font-bold">{formatTime(clipDuration)}</p>
-                  </div>
-                  <div className={`panel-brutal p-2 text-center ${canExport ? 'bg-green-50' : 'bg-red-50'}`}>
-                    <p className={`text-xs font-bold ${canExport ? 'text-green-800' : 'text-red-800'}`}>
-                      {canExport ? '✓ Ready to Export' : '⚠ Max 60s'}
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {state === 'complete' && gifBlob && (
-                <div className="panel-brutal p-3 space-y-3 text-sm">
-                  <div>
-                    <p className="text-xs opacity-60">OUTPUT SIZE</p>
-                    <p className="font-bold">{(gifBlob.size / (1024 * 1024)).toFixed(2)} MB</p>
-                  </div>
-                  <div>
-                    <p className="text-xs opacity-60">READY TO</p>
-                    <p className="font-bold">Download</p>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* Help section */}
-            <div>
-              <h2 className="text-sm font-black uppercase mb-2">Help</h2>
-              <div className="panel-brutal p-3 text-xs space-y-2">
-                <p>• <strong>Import:</strong> Select video file</p>
-                <p>• <strong>Trim:</strong> Adjust start/end sliders</p>
-                <p>• <strong>Export:</strong> Convert to GIF</p>
-                <p>• <strong>Download:</strong> Save to device</p>
+          </div>
+        )}
+        
+        {state === 'processing' && (
+          <div className="h-full flex items-center justify-center p-4">
+            <div className="card card-elevated p-8 sm:p-12 max-w-md w-full text-center space-y-6">
+              <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#D97757] to-[#E9A87E] rounded-2xl flex items-center justify-center">
+                <svg className="w-8 h-8 text-white spinner" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
               </div>
+              
+              <div>
+                <h2 className="text-xl font-semibold mb-2">Processing</h2>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {processingStage}
+                </p>
+              </div>
+              
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+              </div>
+              
+              <p className="text-2xl font-semibold">{progress}%</p>
             </div>
           </div>
-        </div>
-      </div>
+        )}
+        
+        {state === 'complete' && gifUrl && (
+          <div className="h-full flex items-center justify-center p-4 overflow-auto">
+            <div className="card card-elevated p-6 sm:p-8 max-w-2xl w-full space-y-6">
+              <div className="text-center">
+                <div className="status-badge success mx-auto mb-3">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Conversion Complete
+                </div>
+                <h2 className="text-2xl font-semibold">Your GIF is Ready</h2>
+              </div>
+              
+              <img 
+                src={gifUrl} 
+                alt="Generated GIF" 
+                className="w-full rounded-lg" 
+                style={{ border: '1px solid var(--border)' }}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                {gifBlob && (
+                  <>
+                    <div className="card p-4 text-center">
+                      <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>File Size</p>
+                      <p className="text-lg font-semibold">
+                        {(gifBlob.size / (1024 * 1024)).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <div className="card p-4 text-center">
+                      <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Duration</p>
+                      <p className="text-lg font-semibold">
+                        {formatTime(clipDuration)}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {downloadState !== 'idle' && (
+                <div className={`status-badge ${downloadState === 'complete' ? 'success' : 'info'} fade-in`}>
+                  {downloadState === 'preparing' && 'Preparing download...'}
+                  {downloadState === 'downloading' && (
+                    <>
+                      <span className="pulse">Downloading...</span>
+                    </>
+                  )}
+                  {downloadState === 'complete' && (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Downloaded successfully
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
