@@ -323,16 +323,16 @@ export default function VideoEditor() {
   return (
     <div className="h-screen w-screen flex flex-col bg-brutalism-bg overflow-hidden safe-area">
       {/* Top Toolbar */}
-      <div className="h-14 border-b-2 border-black bg-brutalism-panel flex items-center justify-between px-4 flex-shrink-0 no-select">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-black uppercase">Giffy</h1>
-          <button onClick={handleNew} className="btn-brutal text-sm">
+      <div className="h-14 border-b-2 border-black bg-brutalism-panel flex items-center justify-between px-2 sm:px-4 flex-shrink-0 no-select">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <h1 className="text-lg sm:text-xl font-black uppercase">Giffy</h1>
+          <button onClick={handleNew} className="btn-brutal text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2">
             New
           </button>
         </div>
         
-        {/* Status indicator */}
-        <div className="flex-1 flex justify-center px-4">
+        {/* Status indicator - hidden on mobile */}
+        <div className="hidden md:flex flex-1 justify-center px-4">
           {(state === 'editing' || state === 'processing') && (
             <div className="panel-brutal px-4 py-2 text-sm font-bold max-w-md">
               {state === 'editing' && getStatusMessage()}
@@ -343,21 +343,22 @@ export default function VideoEditor() {
           )}
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {state === 'editing' && (
             <button
               onClick={handleConvert}
               disabled={!canExport}
-              className={canExport ? 'btn-brutal-success' : 'btn-brutal opacity-50 cursor-not-allowed'}
+              className={`${canExport ? 'btn-brutal-success' : 'btn-brutal opacity-50 cursor-not-allowed'} text-xs sm:text-sm px-3 py-1 sm:px-4 sm:py-2`}
               title={!canExport ? 'Adjust trim to 60s or less' : 'Export to GIF'}
             >
-              Export GIF
+              <span className="hidden sm:inline">Export GIF</span>
+              <span className="sm:hidden">Export</span>
             </button>
           )}
           {state === 'complete' && (
             <button 
               onClick={handleDownload} 
-              className="btn-brutal-primary"
+              className="btn-brutal-primary text-xs sm:text-sm px-3 py-1 sm:px-4 sm:py-2"
               disabled={isDownloading}
             >
               {isDownloading ? 'Downloading...' : 'Download'}
@@ -368,8 +369,8 @@ export default function VideoEditor() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar */}
-        <div className="w-64 border-r-2 border-black bg-brutalism-panel flex-shrink-0 overflow-y-auto">
+        {/* Left Sidebar - hidden on mobile/tablet */}
+        <div className="hidden lg:block w-64 border-r-2 border-black bg-brutalism-panel flex-shrink-0 overflow-y-auto">
           <div className="p-4 space-y-4">
             <div>
               <h2 className="text-sm font-black uppercase mb-2">Project</h2>
@@ -434,9 +435,9 @@ export default function VideoEditor() {
         {/* Center Preview */}
         <div className="flex-1 flex flex-col">
           {/* Preview Area */}
-          <div className="flex-1 flex items-center justify-center p-8 bg-brutalism-hover">
+          <div className="flex-1 flex items-center justify-center p-2 sm:p-4 md:p-8 bg-brutalism-hover">
             {state === 'editing' && videoUrl && (
-              <div className="w-full max-w-3xl space-y-4">
+              <div className="w-full max-w-3xl space-y-2 sm:space-y-4">
                 <div className="video-preview-brutal">
                   <video
                     ref={videoRef}
@@ -450,33 +451,40 @@ export default function VideoEditor() {
                 </div>
                 
                 {/* Playback controls */}
-                <div className="flex justify-center gap-3">
+                <div className="flex justify-center gap-2 sm:gap-3">
                   <button 
                     onClick={togglePlayPause} 
-                    className="icon-btn-brutal"
+                    className="icon-btn-brutal text-lg sm:text-xl"
                     title={isPlaying ? 'Pause' : 'Play'}
                   >
                     {isPlaying ? '⏸' : '▶'}
                   </button>
                   <button 
                     onClick={() => seekTo(trimStart)} 
-                    className="icon-btn-brutal"
+                    className="icon-btn-brutal text-lg sm:text-xl"
                     title="Jump to trim start"
                   >
                     ⏮
                   </button>
                   <button 
                     onClick={() => seekTo(trimEnd)} 
-                    className="icon-btn-brutal"
+                    className="icon-btn-brutal text-lg sm:text-xl"
                     title="Jump to trim end"
                   >
                     ⏭
                   </button>
                 </div>
                 
-                {/* Current action hint */}
-                <div className="panel-brutal p-3 text-center">
-                  <p className="text-sm font-bold">
+                {/* Mobile status message */}
+                <div className="md:hidden panel-brutal p-3 text-center">
+                  <p className={`text-xs sm:text-sm font-bold ${canExport ? 'text-green-600' : 'text-red-600'}`}>
+                    {getStatusMessage()}
+                  </p>
+                </div>
+                
+                {/* Current action hint - hidden on small mobile */}
+                <div className="hidden sm:block panel-brutal p-3 text-center">
+                  <p className="text-xs sm:text-sm font-bold">
                     Adjust the trim sliders below to select your clip
                   </p>
                 </div>
@@ -484,49 +492,49 @@ export default function VideoEditor() {
             )}
 
             {state === 'processing' && (
-              <div className="panel-brutal p-12 text-center max-w-md">
-                <div className="text-6xl mb-6 spin-brutal inline-block">⚡</div>
-                <h2 className="text-2xl font-black uppercase mb-4">Processing</h2>
+              <div className="panel-brutal p-6 sm:p-12 text-center max-w-md mx-4">
+                <div className="text-4xl sm:text-6xl mb-4 sm:mb-6 spin-brutal inline-block">⚡</div>
+                <h2 className="text-xl sm:text-2xl font-black uppercase mb-3 sm:mb-4">Processing</h2>
                 
                 {/* Progress bar */}
-                <div className="w-full h-6 bg-white border-2 border-black mb-4">
+                <div className="w-full h-4 sm:h-6 bg-white border-2 border-black mb-3 sm:mb-4">
                   <div 
                     className="h-full bg-brutalism-success transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
                 
-                <p className="font-bold text-2xl mb-4">{progress}%</p>
+                <p className="font-bold text-xl sm:text-2xl mb-3 sm:mb-4">{progress}%</p>
                 
                 {/* Status message */}
-                <div className="panel-brutal p-3 bg-white">
-                  <p className="text-sm font-bold">{processingMessage}</p>
+                <div className="panel-brutal p-2 sm:p-3 bg-white">
+                  <p className="text-xs sm:text-sm font-bold">{processingMessage}</p>
                 </div>
                 
-                <p className="text-xs mt-4 opacity-60">
-                  This may take a few moments depending on clip length
+                <p className="text-xs mt-3 sm:mt-4 opacity-60">
+                  This may take a few moments
                 </p>
               </div>
             )}
 
             {state === 'complete' && gifUrl && (
-              <div className="panel-brutal p-8 max-w-2xl">
-                <h2 className="text-2xl font-black uppercase mb-6 text-center">✓ Complete!</h2>
+              <div className="panel-brutal p-4 sm:p-8 max-w-2xl mx-4 w-full">
+                <h2 className="text-xl sm:text-2xl font-black uppercase mb-4 sm:mb-6 text-center">✓ Complete!</h2>
                 
-                <img src={gifUrl} alt="Generated GIF" className="border-4 border-black mb-6" />
+                <img src={gifUrl} alt="Generated GIF" className="border-2 sm:border-4 border-black mb-4 sm:mb-6 w-full" />
                 
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6">
                   {gifBlob && (
                     <>
-                      <div className="panel-brutal p-3 text-center">
+                      <div className="panel-brutal p-2 sm:p-3 text-center">
                         <p className="text-xs opacity-60">FILE SIZE</p>
-                        <p className="font-bold text-lg">
+                        <p className="font-bold text-sm sm:text-lg">
                           {(gifBlob.size / (1024 * 1024)).toFixed(2)} MB
                         </p>
                       </div>
-                      <div className="panel-brutal p-3 text-center">
+                      <div className="panel-brutal p-2 sm:p-3 text-center">
                         <p className="text-xs opacity-60">DURATION</p>
-                        <p className="font-bold text-lg">
+                        <p className="font-bold text-sm sm:text-lg">
                           {formatTime(clipDuration)}
                         </p>
                       </div>
@@ -535,14 +543,14 @@ export default function VideoEditor() {
                 </div>
                 
                 {processingMessage && (
-                  <div className="panel-brutal p-3 bg-green-50 mb-4">
-                    <p className="text-sm font-bold text-center text-green-800">
+                  <div className="panel-brutal p-2 sm:p-3 bg-green-50 mb-3 sm:mb-4">
+                    <p className="text-xs sm:text-sm font-bold text-center text-green-800">
                       {processingMessage}
                     </p>
                   </div>
                 )}
                 
-                <p className="text-center text-sm opacity-60">
+                <p className="text-center text-xs sm:text-sm opacity-60">
                   Click "Download" to save your GIF
                 </p>
               </div>
@@ -551,11 +559,11 @@ export default function VideoEditor() {
 
           {/* Timeline */}
           {state === 'editing' && (
-            <div className="h-52 border-t-2 border-black bg-brutalism-panel flex-shrink-0">
-              <div className="p-4 space-y-4">
+            <div className="h-auto border-t-2 border-black bg-brutalism-panel flex-shrink-0">
+              <div className="p-2 sm:p-4 space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase">Timeline</span>
-                  <span className="font-mono text-sm font-bold">
+                  <span className="font-mono text-xs sm:text-sm font-bold">
                     {formatTime(currentTime)} / {formatTime(duration)}
                   </span>
                 </div>
@@ -564,7 +572,7 @@ export default function VideoEditor() {
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-xs font-bold">PLAYHEAD</label>
-                    <span className="text-xs opacity-60">Scrub through video</span>
+                    <span className="hidden sm:inline text-xs opacity-60">Scrub through video</span>
                   </div>
                   <input
                     type="range"
@@ -616,13 +624,27 @@ export default function VideoEditor() {
                     }}
                   />
                 </div>
+                
+                {/* Mobile clip info */}
+                <div className="lg:hidden panel-brutal p-2 text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="opacity-60">Clip:</span>
+                    <span className="font-bold">{formatTime(clipDuration)}</span>
+                  </div>
+                  {videoFile && (
+                    <div className="flex justify-between">
+                      <span className="opacity-60">File:</span>
+                      <span className="font-bold truncate max-w-[60%]">{videoFile.name}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Right Sidebar */}
-        <div className="w-64 border-l-2 border-black bg-brutalism-panel flex-shrink-0 overflow-y-auto">
+        {/* Right Sidebar - hidden on mobile/tablet */}
+        <div className="hidden lg:block w-64 border-l-2 border-black bg-brutalism-panel flex-shrink-0 overflow-y-auto">
           <div className="p-4 space-y-4">
             <div>
               <h2 className="text-sm font-black uppercase mb-2">Export</h2>
