@@ -23,6 +23,7 @@ export default function VideoEditor() {
   const [gifBlob, setGifBlob] = useState<Blob | null>(null);
   const [gifUrl, setGifUrl] = useState<string>('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadState, setDownloadState] = useState<'idle' | 'preparing' | 'downloading' | 'complete'>('idle');
 
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -196,27 +197,33 @@ export default function VideoEditor() {
   const handleDownload = () => {
     if (!gifUrl) return;
     
+    setDownloadState('preparing');
     setIsDownloading(true);
     setProcessingMessage('Preparing download...');
     
-    const a = document.createElement('a');
-    a.href = gifUrl;
-    a.download = `giffy-${Date.now()}.gif`;
-    
-    // Simulate download progress
+    // Simulate download preparation
     setTimeout(() => {
-      setProcessingMessage('Downloading...');
+      setDownloadState('downloading');
+      setProcessingMessage('Downloading GIF...');
+      
+      const a = document.createElement('a');
+      a.href = gifUrl;
+      a.download = `giffy-${Date.now()}.gif`;
       a.click();
       
+      // Simulate download completion
       setTimeout(() => {
-        setIsDownloading(false);
-        setProcessingMessage('Downloaded!');
+        setDownloadState('complete');
+        setProcessingMessage('✓ Downloaded successfully!');
         
+        // Reset after showing success
         setTimeout(() => {
+          setIsDownloading(false);
+          setDownloadState('idle');
           setProcessingMessage('');
-        }, 2000);
-      }, 500);
-    }, 300);
+        }, 3000);
+      }, 800);
+    }, 400);
   };
 
   // New project
@@ -232,6 +239,8 @@ export default function VideoEditor() {
       setCurrentTime(0);
       setProgress(0);
       setProcessingMessage('');
+      setDownloadState('idle');
+      setIsDownloading(false);
     }
   };
 
@@ -356,13 +365,25 @@ export default function VideoEditor() {
             </button>
           )}
           {state === 'complete' && (
-            <button 
-              onClick={handleDownload} 
-              className="btn-brutal-primary text-xs sm:text-sm px-3 py-1 sm:px-4 sm:py-2"
-              disabled={isDownloading}
-            >
-              {isDownloading ? 'Downloading...' : 'Download'}
-            </button>
+            <>
+              <button 
+                onClick={handleDownload} 
+                className={`btn-brutal-primary text-xs sm:text-sm px-3 py-1 sm:px-4 sm:py-2 ${downloadState === 'downloading' ? 'download-indicator' : ''}`}
+                disabled={isDownloading}
+              >
+                {downloadState === 'idle' && 'Download'}
+                {downloadState === 'preparing' && '⏳ Preparing...'}
+                {downloadState === 'downloading' && '⬇️ Downloading...'}
+                {downloadState === 'complete' && '✓ Downloaded!'}
+              </button>
+              {downloadState !== 'idle' && (
+                <div className="hidden sm:block panel-brutal px-3 py-1 text-xs font-bold">
+                  {downloadState === 'preparing' && '📦 Getting ready...'}
+                  {downloadState === 'downloading' && '💾 Saving file...'}
+                  {downloadState === 'complete' && '✨ Complete!'}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -519,22 +540,24 @@ export default function VideoEditor() {
 
             {state === 'complete' && gifUrl && (
               <div className="panel-brutal p-4 sm:p-8 max-w-2xl mx-4 w-full">
-                <h2 className="text-xl sm:text-2xl font-black uppercase mb-4 sm:mb-6 text-center">✓ Complete!</h2>
+                <h2 className="text-xl sm:text-2xl font-black uppercase mb-4 sm:mb-6 text-center" style={{ color: 'var(--claude-dark)' }}>
+                  ✓ Complete!
+                </h2>
                 
-                <img src={gifUrl} alt="Generated GIF" className="border-2 sm:border-4 border-black mb-4 sm:mb-6 w-full" />
+                <img src={gifUrl} alt="Generated GIF" className="border-2 sm:border-4 border-black mb-4 sm:mb-6 w-full" style={{ borderColor: 'var(--claude-brown)' }} />
                 
                 <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6">
                   {gifBlob && (
                     <>
                       <div className="panel-brutal p-2 sm:p-3 text-center">
                         <p className="text-xs opacity-60">FILE SIZE</p>
-                        <p className="font-bold text-sm sm:text-lg">
+                        <p className="font-bold text-sm sm:text-lg" style={{ color: 'var(--claude-dark)' }}>
                           {(gifBlob.size / (1024 * 1024)).toFixed(2)} MB
                         </p>
                       </div>
                       <div className="panel-brutal p-2 sm:p-3 text-center">
                         <p className="text-xs opacity-60">DURATION</p>
-                        <p className="font-bold text-sm sm:text-lg">
+                        <p className="font-bold text-sm sm:text-lg" style={{ color: 'var(--claude-dark)' }}>
                           {formatTime(clipDuration)}
                         </p>
                       </div>
@@ -542,17 +565,52 @@ export default function VideoEditor() {
                   )}
                 </div>
                 
-                {processingMessage && (
-                  <div className="panel-brutal p-2 sm:p-3 bg-green-50 mb-3 sm:mb-4">
-                    <p className="text-xs sm:text-sm font-bold text-center text-green-800">
-                      {processingMessage}
-                    </p>
+                {/* Download state indicator */}
+                {downloadState !== 'idle' && (
+                  <div className={`panel-brutal p-3 sm:p-4 mb-4 sm:mb-6 text-center ${downloadState === 'complete' ? 'bg-green-50' : ''}`}>
+                    <div className="flex items-center justify-center gap-2">
+                      {downloadState === 'preparing' && (
+                        <>
+                          <span className="text-2xl">📦</span>
+                          <div>
+                            <p className="font-bold text-sm sm:text-base" style={{ color: 'var(--claude-orange)' }}>
+                              Preparing Download
+                            </p>
+                            <p className="text-xs opacity-60">Getting your GIF ready...</p>
+                          </div>
+                        </>
+                      )}
+                      {downloadState === 'downloading' && (
+                        <>
+                          <span className="text-2xl download-pulse">⬇️</span>
+                          <div>
+                            <p className="font-bold text-sm sm:text-base" style={{ color: 'var(--claude-orange)' }}>
+                              Downloading...
+                            </p>
+                            <p className="text-xs opacity-60">Saving to your device</p>
+                          </div>
+                        </>
+                      )}
+                      {downloadState === 'complete' && (
+                        <>
+                          <span className="text-2xl">✨</span>
+                          <div>
+                            <p className="font-bold text-sm sm:text-base" style={{ color: 'var(--claude-success)' }}>
+                              Downloaded Successfully!
+                            </p>
+                            <p className="text-xs opacity-60">Check your downloads folder</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
                 
-                <p className="text-center text-xs sm:text-sm opacity-60">
-                  Click "Download" to save your GIF
-                </p>
+                {downloadState === 'idle' && (
+                  <p className="text-center text-xs sm:text-sm opacity-60">
+                    Click "Download" button above to save your GIF
+                  </p>
+                )}
               </div>
             )}
           </div>
