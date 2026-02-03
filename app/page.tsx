@@ -384,8 +384,8 @@ export default function RetroGiffy() {
 
       await ffmpeg.exec(command);
 
-      const data = await ffmpeg.readFile(outputName);
-      const url = URL.createObjectURL(new Blob([(data as Uint8Array).buffer], { type: mimeType }));
+      const data = await ffmpeg.readFile(outputName) as Uint8Array;
+      const url = URL.createObjectURL(new Blob([new Uint8Array(data)], { type: mimeType }));
       setOutputUrl(url);
       setState('ready');
 
