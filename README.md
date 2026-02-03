@@ -7,7 +7,7 @@
 </h1>
 
 <p align="center">
-  <strong>🚀 Lightning-fast, browser-based video converter. No uploads. 100% private.</strong>
+  <strong>Lightning-fast, browser-based video converter. No uploads. 100% private.</strong>
 </p>
 
 <p align="center">
@@ -36,21 +36,20 @@
 
 ---
 
-## 🎬 Demo
+## Demo
 
 <p align="center">
   <img src="public/social-cover.png" alt="Giffy Interface Demo" width="800">
 </p>
 
 <p align="center">
-  <a href="https://giffy.app">
-    <img src="https://img.shields.io/badge/🔗_Live_Demo-FF0055?style=for-the-badge&logoColor=white" alt="Live Demo">
+    <img src="https://img.shields.io/badge/Live_Demo-FF0055?style=for-the-badge&logoColor=white" alt="Live Demo">
   </a>
 </p>
 
 ---
 
-## ✨ Features
+## Features
 
 <table>
   <tr>
@@ -91,23 +90,23 @@
 
 ---
 
-## 🎨 Retro UI
+## Retro UI
 
 <p align="center">
   <img src="https://readme-typing-svg.herokuapp.com?font=Press+Start+2P&size=12&pause=1000&color=00FFFF&center=true&vCenter=true&random=false&width=500&lines=Glitch+effects...;Floating+decorations...;Scanline+overlay...;Neon+color+scheme..." alt="UI Features" />
 </p>
 
-- 🌈 **Vibrant neon colors** - Pink, Cyan, Lime, Yellow
-- ✨ **Animated floating shapes** - Retro geometric decorations
-- 📺 **CRT scanlines** - Authentic retro feel
-- 🔮 **Corner glows** - Pulsing gradient effects
-- 💫 **Glitch text** - Animated title effects
+- **Vibrant neon colors** - Pink, Cyan, Lime, Yellow
+- **Animated floating shapes** - Retro geometric decorations
+- **CRT scanlines** - Authentic retro feel
+- **Corner glows** - Pulsing gradient effects
+- **Glitch text** - Animated title effects
 
 ---
 
-## 📦 Supported Formats
+## Supported Formats
 
-### 🎥 Video Output
+### Video Output
 | Format | Extension | Description |
 |--------|-----------|-------------|
 | ![GIF](https://img.shields.io/badge/-GIF-FF0055?style=flat-square) | `.gif` | Animated GIF (high quality) |
@@ -117,7 +116,7 @@
 | ![AVI](https://img.shields.io/badge/-AVI-FFA500?style=flat-square) | `.avi` | MPEG-4 video |
 | ![MOV](https://img.shields.io/badge/-MOV-9B59B6?style=flat-square) | `.mov` | QuickTime video |
 
-### 🎵 Audio Output
+### Audio Output
 | Format | Extension | Description |
 |--------|-----------|-------------|
 | ![MP3](https://img.shields.io/badge/-MP3-FF0055?style=flat-square) | `.mp3` | MPEG audio |
@@ -126,7 +125,7 @@
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ```bash
 # Clone the repository
@@ -146,7 +145,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 <p align="center">
   <img src="https://skillicons.dev/icons?i=nextjs,ts,tailwind,react" alt="Tech Stack" />
@@ -162,7 +161,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 giffy/
@@ -179,7 +178,7 @@ giffy/
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -191,18 +190,18 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 <p align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=14&pause=1000&color=00FFFF&center=true&vCenter=true&random=false&width=435&lines=Made+with+%E2%9D%A4%EF%B8%8F+by+the+Giffy+Team" alt="Footer" />
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=14&pause=1000&color=00FFFF&center=true&vCenter=true&random=false&width=435&lines=Made+by+the+Giffy+Team" alt="Footer" />
 </p>
 
 <p align="center">
   <a href="https://github.com/yourusername/giffy/stargazers">
-    <img src="https://img.shields.io/badge/⭐_Star_this_repo-FFFF00?style=for-the-badge" alt="Star">
+    <img src="https://img.shields.io/badge/Star_this_repo-FFFF00?style=for-the-badge" alt="Star">
   </a>
 </p>
