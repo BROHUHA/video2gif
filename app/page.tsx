@@ -575,8 +575,8 @@ export default function RetroGiffy() {
                   <h3 className="font-heading text-xl mb-4">SPEED CONTROL</h3>
                   {/* VIDEO PREVIEW */}
                   {videoPreviewUrl && (
-                    <div className="w-full max-w-sm mx-auto mb-4 border-4 border-black bg-black">
-                      <video src={videoPreviewUrl} controls muted className="w-full max-h-32 object-contain" />
+                    <div className="w-full max-w-lg mx-auto mb-4 border-4 border-black bg-black aspect-video flex items-center justify-center">
+                      <video src={videoPreviewUrl} controls muted className="w-full h-full object-contain" />
                     </div>
                   )}
                   <div className="flex items-center gap-4 mb-4">
