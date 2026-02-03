@@ -1,22 +1,32 @@
 {
-  "name": "Giffy - Video to GIF Editor",
+  "name": "Giffy - Video to GIF & Universal Converter",
   "short_name": "Giffy",
-  "description": "Professional video to GIF converter with timeline editor",
+  "description": "Convert videos to GIFs, MP4, WebM, AVI, MOV and extract audio instantly in your browser",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FAFAF9",
-  "theme_color": "#6366F1",
-  "orientation": "any",
+  "background_color": "#111111",
+  "theme_color": "#FF0055",
+  "orientation": "portrait-primary",
+  "categories": [
+    "utilities",
+    "productivity"
+  ],
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
+      "src": "/logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/social-cover.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "label": "Giffy Interface"
+    }
+  ],
+  "lang": "en",
+  "dir": "ltr"
 }
