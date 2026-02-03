@@ -1,15 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-space",
+});
+
 export const metadata: Metadata = {
-  title: "Giffy - Professional Video to GIF Editor",
-  description: "Convert videos to GIFs with professional editing tools. Timeline, trim, filters, and more.",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Giffy",
-  },
-  manifest: "/manifest.json",
+  title: "Giffy - Professional Video to GIF Converter",
+  description: "Convert videos to high-quality GIFs in your browser. Fast, private, and free.",
 };
 
 export const viewport: Viewport = {
@@ -17,8 +18,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  viewportFit: "cover",
-  themeColor: "#6366F1",
+  themeColor: "#FF2E63",
 };
 
 export default function RootLayout({
@@ -28,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className={spaceGrotesk.variable}>
         {children}
       </body>
     </html>

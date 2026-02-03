@@ -6,6 +6,95 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 type AppState = 'init' | 'empty' | 'loaded' | 'editing' | 'processing' | 'ready';
 
+// Icon Components
+const PlayIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+  </svg>
+);
+
+const PauseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="6" y="4" width="4" height="16"></rect>
+    <rect x="14" y="4" width="4" height="16"></rect>
+  </svg>
+);
+
+const SkipBackIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="19 20 9 12 19 4 19 20"></polygon>
+    <line x1="5" y1="19" x2="5" y2="5"></line>
+  </svg>
+);
+
+const SkipForwardIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="5 4 15 12 5 20 5 4"></polygon>
+    <line x1="19" y1="5" x2="19" y2="19"></line>
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+    <polyline points="17 8 12 3 7 8"></polyline>
+    <line x1="12" y1="3" x2="12" y2="15"></line>
+  </svg>
+);
+
+const ZapIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+  </svg>
+);
+
+const DownloadIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+    <polyline points="7 10 12 15 17 10"></polyline>
+    <line x1="12" y1="15" x2="12" y2="3"></line>
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <line x1="5" y1="12" x2="19" y2="12"></line>
+  </svg>
+);
+
+const LoaderIcon = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="2" x2="12" y2="6"></line>
+    <line x1="12" y1="18" x2="12" y2="22"></line>
+    <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+    <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+    <line x1="2" y1="12" x2="6" y2="12"></line>
+    <line x1="18" y1="12" x2="22" y2="12"></line>
+    <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+    <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+);
+
+const FilmIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+    <line x1="7" y1="2" x2="7" y2="22"></line>
+    <line x1="17" y1="2" x2="17" y2="22"></line>
+    <line x1="2" y1="12" x2="22" y2="12"></line>
+    <line x1="2" y1="7" x2="7" y2="7"></line>
+    <line x1="2" y1="17" x2="7" y2="17"></line>
+    <line x1="17" y1="17" x2="22" y2="17"></line>
+    <line x1="17" y1="7" x2="22" y2="7"></line>
+  </svg>
+);
+
 export default function Giffy() {
   const [state, setState] = useState<AppState>('init');
   const [loadProgress, setLoadProgress] = useState(0);
@@ -187,12 +276,12 @@ export default function Giffy() {
       <div className="h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FF2E63 0%, #08D9D6 50%, #FFD93D 100%)' }}>
         <div className="card card-glow-pink animate-popin" style={{ maxWidth: '450px', width: '90%' }}>
           <div className="icon-box mx-auto mb-6 animate-bounce">
-            <svg className="w-12 h-12 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <div className="animate-spin text-white">
+              <LoaderIcon />
+            </div>
           </div>
           <h1 className="text-h1 text-center mb-4 text-gradient">GIFFY</h1>
-          <p className="text-center mb-6" style={{ fontWeight: 600 }}>LOADING VIDEO PROCESSOR...</p>
+          <p className="text-center mb-6" style={{ fontWeight: 600 }}>LOADING VIDEO PROCESSOR</p>
           <div className="progress mb-4">
             <div className="progress-fill" style={{ width: `${loadProgress}%` }}></div>
           </div>
@@ -209,16 +298,17 @@ export default function Giffy() {
         <div className="container flex items-center justify-between" style={{ padding: 'var(--space-base)' }}>
           <div className="flex items-center gap-base">
             <div className="icon-box" style={{ width: '48px', height: '48px' }}>
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-              </svg>
+              <div className="text-white">
+                <FilmIcon />
+              </div>
             </div>
             <h1 className="text-h2 text-gradient" style={{ fontWeight: 800 }}>GIFFY</h1>
           </div>
           
           {state !== 'empty' && (
-            <button onClick={handleReset} className="btn-accent" style={{ padding: '10px 20px', fontSize: '14px' }}>
-              ✨ NEW
+            <button onClick={handleReset} className="btn-accent flex items-center gap-sm" style={{ padding: '10px 20px', fontSize: '14px' }}>
+              <PlusIcon />
+              NEW
             </button>
           )}
         </div>
@@ -233,7 +323,7 @@ export default function Giffy() {
               <div className="animate-popin" style={{ maxWidth: '700px', width: '100%' }}>
                 <div className="text-center mb-8">
                   <h2 className="text-display text-gradient mb-4" style={{ lineHeight: 0.9, fontSize: 'clamp(40px, 8vw, 64px)' }}>
-                    CREATE<br/>AMAZING<br/>GIFs
+                    CREATE<br/>AMAZING<br/>GIFS
                   </h2>
                   <p className="text-h3 text-bold" style={{ color: 'var(--color-text-secondary)' }}>
                     FAST • SIMPLE • FREE
@@ -250,16 +340,17 @@ export default function Giffy() {
                   style={{ padding: 'var(--space-2xl) var(--space-lg)' }}
                 >
                   <div className="icon-box icon-box-accent mx-auto mb-4 animate-bounce" style={{ width: '80px', height: '80px' }}>
-                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--color-border)' }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
+                    <div style={{ color: 'var(--color-border)' }}>
+                      <UploadIcon />
+                    </div>
                   </div>
                   <h3 className="text-h2 text-bold mb-3">DROP VIDEO HERE</h3>
                   <p className="text-body mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                     OR CLICK TO BROWSE
                   </p>
-                  <button className="btn-primary btn-lg">
-                    📁 CHOOSE VIDEO
+                  <button className="btn-primary btn-lg flex items-center gap-base mx-auto">
+                    <UploadIcon />
+                    CHOOSE VIDEO
                   </button>
                   <p style={{ marginTop: 'var(--space-base)', fontSize: 'var(--font-small)', fontWeight: 600, color: 'var(--color-text-tertiary)' }}>
                     MP4, MOV, WEBM • MAX 100 MB
@@ -276,21 +367,32 @@ export default function Giffy() {
                 
                 <div className="grid gap-base" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
                   <div className="feature-card" style={{ padding: 'var(--space-base)' }}>
-                    <div style={{ fontSize: '32px', marginBottom: 'var(--space-sm)' }}>⚡</div>
+                    <div className="text-h1 mb-2">
+                      <ZapIcon />
+                    </div>
                     <h4 className="text-body text-bold mb-1">LIGHTNING FAST</h4>
                     <p style={{ fontSize: 'var(--font-small)', color: 'var(--color-text-secondary)' }}>
-                      Browser-based
+                      Browser-based processing
                     </p>
                   </div>
                   <div className="feature-card" style={{ padding: 'var(--space-base)' }}>
-                    <div style={{ fontSize: '32px', marginBottom: 'var(--space-sm)' }}>🔒</div>
+                    <div className="text-h1 mb-2">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                    </div>
                     <h4 className="text-body text-bold mb-1">100% PRIVATE</h4>
                     <p style={{ fontSize: 'var(--font-small)', color: 'var(--color-text-secondary)' }}>
-                      Never uploaded
+                      Never leaves your device
                     </p>
                   </div>
                   <div className="feature-card" style={{ padding: 'var(--space-base)' }}>
-                    <div style={{ fontSize: '32px', marginBottom: 'var(--space-sm)' }}>🎨</div>
+                    <div className="text-h1 mb-2">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                      </svg>
+                    </div>
                     <h4 className="text-body text-bold mb-1">PRO QUALITY</h4>
                     <p style={{ fontSize: 'var(--font-small)', color: 'var(--color-text-secondary)' }}>
                       Optimized output
@@ -306,7 +408,7 @@ export default function Giffy() {
             <div className="h-full flex items-center justify-center">
               <div className="animate-popin w-full" style={{ maxWidth: '900px' }}>
                 <div className="card card-glow-cyan" style={{ padding: 'var(--space-lg)' }}>
-                  {/* Video Container - Fixed aspect ratio */}
+                  {/* Video Container */}
                   <div className="video-container mb-4" style={{ maxHeight: '50vh' }}>
                     <video
                       ref={videoRef}
@@ -321,30 +423,24 @@ export default function Giffy() {
                   
                   {state === 'editing' && (
                     <>
-                      {/* Single Row Controls */}
+                      {/* Controls */}
                       <div className="flex items-center justify-center gap-base mb-4">
-                        <button onClick={() => seekTo(trimStart)} className="btn-secondary" style={{ padding: '12px 16px', fontSize: '14px' }}>
-                          ⏮ START
+                        <button onClick={() => seekTo(trimStart)} className="btn-secondary flex items-center gap-sm" style={{ padding: '12px 16px', fontSize: '14px' }}>
+                          <SkipBackIcon />
+                          START
                         </button>
-                        <button onClick={togglePlay} className="btn-primary" style={{ width: '56px', height: '56px', padding: 0, borderRadius: '12px' }}>
-                          {isPlaying ? (
-                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 9v6m4-6v6" />
-                            </svg>
-                          ) : (
-                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                            </svg>
-                          )}
+                        <button onClick={togglePlay} className="btn-primary flex items-center justify-center" style={{ width: '56px', height: '56px', padding: 0, borderRadius: '12px' }}>
+                          {isPlaying ? <PauseIcon /> : <PlayIcon />}
                         </button>
-                        <button onClick={() => seekTo(trimEnd)} className="btn-secondary" style={{ padding: '12px 16px', fontSize: '14px' }}>
-                          END ⏭
+                        <button onClick={() => seekTo(trimEnd)} className="btn-secondary flex items-center gap-sm" style={{ padding: '12px 16px', fontSize: '14px' }}>
+                          END
+                          <SkipForwardIcon />
                         </button>
                       </div>
                       
                       <div className="divider" style={{ margin: 'var(--space-base) 0' }}></div>
                       
-                      {/* Compact Timeline */}
+                      {/* Timeline */}
                       <div>
                         <div className="flex items-center justify-between mb-3">
                           <span className="text-body text-bold">TIMELINE</span>
@@ -403,11 +499,19 @@ export default function Giffy() {
                         <div className="flex items-center justify-between">
                           <span className="text-body text-bold">DURATION: {formatTime(clipDuration)}</span>
                           {!canExport && (
-                            <div className="badge-error" style={{ padding: '6px 12px', fontSize: '12px' }}>⚠️ MAX 60 SEC</div>
+                            <div className="badge-error flex items-center gap-xs" style={{ padding: '6px 12px', fontSize: '12px' }}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                              </svg>
+                              MAX 60 SEC
+                            </div>
                           )}
                           {canExport && (
-                            <button onClick={handleExport} className="btn-primary" style={{ padding: '12px 24px', fontSize: '14px' }}>
-                              ⚡ EXPORT GIF
+                            <button onClick={handleExport} className="btn-primary flex items-center gap-sm" style={{ padding: '12px 24px', fontSize: '14px' }}>
+                              <ZapIcon />
+                              EXPORT GIF
                             </button>
                           )}
                         </div>
@@ -425,9 +529,9 @@ export default function Giffy() {
               <div className="animate-popin" style={{ maxWidth: '500px', width: '90%' }}>
                 <div className="card card-glow-pink text-center" style={{ padding: 'var(--space-xl)' }}>
                   <div className="icon-box mx-auto mb-6 animate-wiggle">
-                    <svg className="w-12 h-12 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
+                    <div className="animate-spin text-white">
+                      <LoaderIcon />
+                    </div>
                   </div>
                   <h2 className="text-h1 text-bold mb-3">CREATING YOUR GIF</h2>
                   <p className="text-body mb-6" style={{ color: 'var(--color-text-secondary)' }}>
@@ -448,10 +552,11 @@ export default function Giffy() {
               <div className="animate-popin w-full" style={{ maxWidth: '800px' }}>
                 <div className="card card-glow-pink" style={{ padding: 'var(--space-lg)' }}>
                   <div className="text-center mb-6">
-                    <div className="badge-success" style={{ display: 'inline-flex', marginBottom: 'var(--space-base)', padding: '6px 12px', fontSize: '12px' }}>
-                      ✓ READY TO DOWNLOAD
+                    <div className="badge-success flex items-center gap-xs mx-auto" style={{ display: 'inline-flex', marginBottom: 'var(--space-base)', padding: '6px 12px', fontSize: '12px' }}>
+                      <CheckIcon />
+                      READY TO DOWNLOAD
                     </div>
-                    <h2 className="text-h1 text-gradient">YOUR GIF IS READY!</h2>
+                    <h2 className="text-h1 text-gradient">YOUR GIF IS READY</h2>
                   </div>
                   
                   <div className="video-container mb-6" style={{ maxHeight: '50vh' }}>
@@ -470,11 +575,13 @@ export default function Giffy() {
                   </div>
                   
                   <div className="grid grid-cols-2 gap-base">
-                    <button onClick={handleDownload} className="btn-primary" style={{ padding: '14px 20px', fontSize: '14px' }}>
-                      ⬇️ DOWNLOAD
+                    <button onClick={handleDownload} className="btn-primary flex items-center gap-sm justify-center" style={{ padding: '14px 20px', fontSize: '14px' }}>
+                      <DownloadIcon />
+                      DOWNLOAD
                     </button>
-                    <button onClick={handleReset} className="btn-secondary" style={{ padding: '14px 20px', fontSize: '14px' }}>
-                      ✨ NEW GIF
+                    <button onClick={handleReset} className="btn-secondary flex items-center gap-sm justify-center" style={{ padding: '14px 20px', fontSize: '14px' }}>
+                      <PlusIcon />
+                      NEW GIF
                     </button>
                   </div>
                 </div>

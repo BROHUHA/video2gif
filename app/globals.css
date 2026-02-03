@@ -80,7 +80,7 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-family: var(--font-space), 'Space Grotesk', -apple-system, system-ui, sans-serif;
   font-size: var(--font-body);
   line-height: 1.6;
   color: var(--color-text-primary);
